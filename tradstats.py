@@ -8,7 +8,7 @@ from collections import deque
 base_sum_support = deque()
 base_sum = 0
 
-def calculate_candlestick_score(last_candle, number_of_prediction_candlesticks=24 * tp.prediction_period):
+def calculate_candlestick_score(last_candle, number_of_prediction_candlesticks=24 * tp.mean_period, new=True):
     global base_sum
     global base_sum_support
     """
@@ -25,10 +25,15 @@ def calculate_candlestick_score(last_candle, number_of_prediction_candlesticks=2
     high_price = last_candle['high']
     low_price = last_candle['low']
 
-    base_sum_support.append(high_price - low_price)
-    base_sum = base_sum + base_sum_support[-1]
-    if len(base_sum_support) > number_of_prediction_candlesticks:
-        base_sum = base_sum - base_sum_support.popleft()
+    if new:
+        base_sum_support.append(high_price - low_price)
+        base_sum = base_sum + base_sum_support[-1]
+        if len(base_sum_support) > number_of_prediction_candlesticks:
+            base_sum = base_sum - base_sum_support.popleft()
+    else:
+        base_sum = base_sum - base_sum_support[-1]
+        base_sum_support[-1] = high_price - low_price
+        base_sum = base_sum + base_sum_support[-1]
     base = base_sum / len(base_sum_support)
 
     print(f"base = {base}")

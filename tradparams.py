@@ -19,6 +19,7 @@ dashboard = {
 data_generator_categorizing_threshold = 1.5
 certitude_degree_of_categorization = 1.15
 
+
 prediction_period = 15 # in days
 minutes_in_a_year = 525600
 hourly  = (24 * prediction_period * 2, mt5.TIMEFRAME_H1)
@@ -91,9 +92,9 @@ pseudos = {
     'gn' : 'GBPNZD',
     'gu' : 'GBPUSD',
 
-    'bu' : 'BTCUSD',
-    'xu' : 'XRPUSD',
-    'etu': 'ETHUSD'   
+    'bu' : 'BTCUSD.bc',
+    'xu' : 'XRPUSD.bc',
+    'etu': 'ETHUSD.bc'   
 }
 
 def symbol_converter(pseudo):
@@ -122,4 +123,10 @@ period=24 * prediction_period
 
 testnum=25
 
+mean_period = 50
+mperiod = 24 * mean_period
 
+learning_rate_1 = 0.001
+learning_rate = 0.0001
+# act_threshold15_50_1.5_0.001.json
+model_in_use = f"validated/act_threshold{prediction_period}_{mean_period}_{data_generator_categorizing_threshold}_{learning_rate_1}.json"

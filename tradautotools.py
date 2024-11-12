@@ -1,19 +1,6 @@
 import random
 import tradparams as tparams
 import os
-from catboost import CatBoostClassifier
-
-
-def get_model(model_name="activation008.cbm"):
-    # Création d'un nouvel objet de modèle
-    loaded_model = CatBoostClassifier()
-
-    # Chargement du modèle depuis le fichier
-    loaded_model.load_model(model_name)
-
-    return loaded_model
-
-
 
 
 class RiskTooHighException(Exception):

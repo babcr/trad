@@ -2,16 +2,21 @@ import pandas as pd
 import numpy as np
 import functools
 import tensorflow as tf
-import tradparams as tp
 import tradautotools as ta
 import argparse
 from scipy.sparse import csr_matrix
 import xgboost as xgb
+from tradparams import model_in_use
+from tradparams import pseudos
+from tradparams import testnum
+from tradparams import period
+from tradparams import certitude_degree_of_categorization
+from tradparams import data_generator_categorizing_threshold
 
-num_features = tp.period - tp.testnum + 1
+num_features = period - testnum + 1
 batch_size = 32  # À ajuster selon les performances de votre machine
 test_split_ratio = 0.2
-cert_deg = tp.certitude_degree_of_categorization
+cert_deg = certitude_degree_of_categorization
 
 
 def save_dtest_csv(dtest : xgb.DMatrix, csv_name='dtest.csv'):
@@ -55,7 +60,7 @@ def load_csv_to_dtest(csvfilepath):
     return dtest
 
 
-def test_model(test_data_file_path='dtest.csv', model_name=f"act_threshold_{tp.data_generator_categorizing_threshold}.json"):
+def test_model(test_data_file_path='dtest.csv', model_name=model_in_use):
     global cert_deg
     # Make predictions
     # Load the model from the file
@@ -127,16 +132,7 @@ def test_model(test_data_file_path='dtest.csv', model_name=f"act_threshold_{tp.d
 def save_test_data(dtest : xgb.DMatrix, filepath='dtest.buffer'):
     # Save DMatrix
     ta.rmfile(filepath)
-    dtest.save_binary(filepath)    
-
-def load_test_data():
-    # Example for loading data from CSV (adjust as needed)
-    data = pd.read_csv("test_data.csv")  # Adjust file name/path as needed
-    X_test = data.drop(columns=['label'])  # Adjust based on your column names
-    y_test = data['label']                # Adjust based on your column names
-
-    dtest = xgb.DMatrix(X_test, label=y_test)
-    return
+    dtest.save_binary(filepath)
 
 def datas(symbol):
     # Concaténer tous les DataFrames dans un seul DataFrame
@@ -184,9 +180,9 @@ def use_xgboost():
 
     data_frames_train = []
     data_frames_test = []
-    for x in tp.pseudos:
+    for x in pseudos:
         # Lire chaque fichier CSV et l'ajouter à la liste des DataFrames
-        train_dataset, test_dataset = datas(tp.pseudos[x])
+        train_dataset, test_dataset = datas(pseudos[x])
         test_dataset = test_dataset.map(convert_to_float32)
         train_dataset = train_dataset.map(convert_to_float32)
         data_frames_train.append(train_dataset)
@@ -305,7 +301,7 @@ def use_xgboost():
     # Train the model
     watchlist = [(dtrain, 'train'), (dtest, 'eval')]
     bst = xgb.train(params, dtrain, num_boost_round=100, evals=watchlist,verbose_eval=50, early_stopping_rounds=10)
-    model_name = f"act_threshold_{tp.data_generator_categorizing_threshold}.json"
+    model_name = f"act_threshold_{data_generator_categorizing_threshold}.json"
     bst.save_model(model_name)
     print(f"Model saved.")
     return model_name
