@@ -8,7 +8,6 @@ Makefile.in
 /ylwrap
 .deps/
 *.csv
-*.json
 *_data
 .dirstamp
 

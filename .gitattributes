@@ -1,2 +1,1 @@
 M*.json filter=lfs diff=lfs merge=lfs -text
-dtest*.csv filter=lfs diff=lfs merge=lfs -text
