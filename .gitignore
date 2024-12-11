@@ -7,11 +7,11 @@ Makefile.in
 /test-driver
 /ylwrap
 .deps/
-.dirstamp
 *.csv
-/bull_data
-/bear_data
 *.json
+*_data
+.dirstamp
+
 
 
 # http://www.gnu.org/software/autoconf

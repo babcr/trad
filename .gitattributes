@@ -1,3 +1,2 @@
-*.json filter=lfs diff=lfs merge=lfs -text
-*_data filter=lfs diff=lfs merge=lfs -text
-*.csv filter=lfs diff=lfs merge=lfs -text
+M*.json filter=lfs diff=lfs merge=lfs -text
+dtest*.csv filter=lfs diff=lfs merge=lfs -text
