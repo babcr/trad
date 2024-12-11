@@ -85,7 +85,7 @@ def test_model(test_data_file_path='dtest.csv', model_name=model_in_use):
     print(preds_prob_mean)  # Affiche les 10 premières prédictions de probabilité.
     print(preds_prob[:,0])  # Affiche les 10 premières prédictions de probabilité.
     print(preds_prob[:10])  # Affiche les 10 premières prédictions de probabilité.
-    print(preds[:10]) 
+    print(preds[:10])
 
 
     # Calculate accuracy
@@ -118,10 +118,10 @@ def test_model(test_data_file_path='dtest.csv', model_name=model_in_use):
     print(f"Test false bear: {false_b:.8f}")
     #print(f"Test error: {false_pos + false_a + false_b:.8f}")
 
-    
-    
+
+
     #print(f"Test success: { false_c + false_d:.8f}")
-    
+
     print(f"\nTest false: {false_a + false_b:.8f}")
     print(f"Test true: {true_a + true_b:.8f}")
 
@@ -151,7 +151,7 @@ def datas(symbol):
 
     # Création du dataset tf.data à partir de numpy
     dataset = tf.data.Dataset.from_tensor_slices((
-        features, 
+        features,
         labels
     ))
 
@@ -173,7 +173,7 @@ def convert_to_float32(features, labels):
     features = tf.cast(features, tf.float32)
     labels = tf.cast(labels, tf.float32)
     return features, labels
-    
+
 def use_xgboost():
     # Initialize the CatBoostClassifier
     #model = CatBoostClassifier(iterations=50000, depth=5, learning_rate=0.001, loss_function='MultiClass', verbose=100)
@@ -332,8 +332,8 @@ if __name__ == '__main__':
     # symbol, order_type, volume, price=None, sl=None, tp=None
     parser.add_argument(
         "-s",
-        "--symbol", 
-        help="the symbol you need to place the trade on", 
+        "--symbol",
+        help="the symbol you need to place the trade on",
         default=r'',
         choices = ta.tparams.symbols_list,
         #required=True

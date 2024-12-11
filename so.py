@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import tradautotools as ta
+from tradautotools import SpreadTooHighException, RiskTooHighException
 import argparse
 
 
@@ -17,27 +18,33 @@ def main(
         delta_timeframe_pair
     ):
 
-    order_type, vol, p, sl, tp, typefilling = ta.get_attributes(
-        symbol     ,
-        ordertype  ,
-        volume     ,
-        price      ,
-        mode       ,
-        delta_timeframe_pair
-    )
-    print(f"Account Expendable Equity = {ta.get_equity()}")
+    try:
 
-    ta.send_order(symbol=symbol, order_type=order_type, volume=vol, price=p, stoploss=sl, takeprofit=tp, typefilling=typefilling)
+        order_type, vol, p, sl, tp, expiration_date, typefilling, type_time = ta.get_attributes(
+            symbol     ,
+            ordertype  ,
+            volume     ,
+            price      ,
+            mode       ,
+            delta_timeframe_pair
+        )
+        print(f"Account Expendable Equity = {ta.get_equity()}")
 
-    print(f"\nAttributes = ({order_type}, {vol}, {p}, {sl}, {tp})")
-    
-    print(f"Symbol {symbol} ( max, average ) candle sizes : {ta.candle_size(symbol, delta_timeframe_pair)}")
+        ta.send_order(symbol=symbol, order_type=order_type, volume=vol, price=p, stoploss=sl, takeprofit=tp, typefilling=typefilling,expiration=expiration_date, typetime=type_time )
 
-    # print(f"Symbol {symbol} conversion factor (conversion pair is {ta.get_conv_pair(symbol)}): {ta.get_conversion_factor(symbol)}")
+        print(f"\nAttributes = ({order_type}, {vol}, {p}, {sl}, {tp})")
 
-    print(f"Symbol {symbol} lot size is {ta.get_contract_size(symbol)}")
+        print(f"Symbol {symbol} ( max, average ) candle sizes : {ta.candle_size(symbol, delta_timeframe_pair)}")
 
-    print(f"Symbol {symbol} prices are ( bid, ask ) = {ta.get_prices(symbol)}")
+        # print(f"Symbol {symbol} conversion factor (conversion pair is {ta.get_conv_pair(symbol)}): {ta.get_conversion_factor(symbol)}")
+
+        print(f"Symbol {symbol} lot size is {ta.get_contract_size(symbol)}")
+
+        print(f"Symbol {symbol} prices are ( bid, ask ) = {ta.get_prices(symbol)}")
+    except RiskTooHighException as rth:
+        print(rth.message)
+    except SpreadTooHighException as sth:
+        print(sth.message)
 
 
 
@@ -47,8 +54,8 @@ if __name__ == '__main__':
     # symbol, order_type, volume, price=None, sl=None, tp=None
     parser.add_argument(
         "-s",
-        "--symbol", 
-        help="the symbol you need to place the trade on", 
+        "--symbol",
+        help="the symbol you need to place the trade on",
         default=r'',
         choices = ta.tparams.symbols_list,
         required=True

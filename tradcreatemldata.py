@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 import pandas as pd
-import tradparams as tp
 import argparse
-import tradautotools as ta
+from tradautotools import rmfile
 from datetime import datetime
+from tradparams import to_float, pseudos, minutes_in_a_year, period, testnum, data_generator_categorizing_threshold
 
-threshold = tp.data_generator_categorizing_threshold
+threshold = data_generator_categorizing_threshold
 
 def floor_the_date(date_obj):
 
@@ -26,18 +26,18 @@ def to_minute_in_the_year(date_str):
     floored_timestamp_seconds = floored_date_obj.timestamp()
 
     # Convert the timestamp to minutes
-    minutes_in_the_year = (timestamp_seconds - floored_timestamp_seconds) / 60 #* tp.minutes_in_a_year
+    minutes_in_the_year = (timestamp_seconds - floored_timestamp_seconds) / 60 #* minutes_in_a_year
 
     return minutes_in_the_year
 
 def minute_in_year_normalization(date_str):
-    return 4 * (to_minute_in_the_year(date_str) - tp.minutes_in_a_year / 2) / tp.minutes_in_a_year
+    return 4 * (to_minute_in_the_year(date_str) - minutes_in_a_year / 2) / minutes_in_a_year
 
 
 def create_custom_csv(input_csv, output_csv, period, testnum):
     """
     Crée un fichier CSV avec des lignes de 481 colonnes contenant 480 scores consécutifs et la somme des 5 scores suivants.
-    
+
     :param input_csv: Nom du fichier CSV d'entrée (doit contenir les colonnes 'time' et 'candle_score').
     :param output_csv: Nom du fichier CSV de sortie.
     """
@@ -82,12 +82,12 @@ def create_custom_csv(input_csv, output_csv, period, testnum):
 
 
 def main(period, testnum):
-    for x in tp.pseudos:
-        ta.rmfile(f"{tp.pseudos[x]}_data.csv")
-        ta.rmfile(f"{tp.pseudos[x]}_timestamp_data.csv")
-        df = create_custom_csv(f"{tp.pseudos[x]}_scores.csv",f"{tp.pseudos[x]}_data.csv", period, testnum)
+    for x in pseudos:
+        rmfile(f"{pseudos[x]}_data.csv")
+        rmfile(f"{pseudos[x]}_timestamp_data.csv")
+        df = create_custom_csv(f"{pseudos[x]}_scores.csv",f"{pseudos[x]}_data.csv", period, testnum)
         print(df)
-                                                         
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='order placing function for metatrader 5')
@@ -96,7 +96,7 @@ if __name__ == '__main__':
         "-p",
         "--period",
         help="Period",
-        default=tp.period,
+        default=period,
         type=int
     )
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
         "-t",
         "--testnum",
         help="Test number of candlesticks",
-        default=tp.testnum,
+        default=testnum,
         type=int
     )
 
