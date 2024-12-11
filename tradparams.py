@@ -1,7 +1,17 @@
 import MetaTrader5 as mt5
+from math import ceil, floor
+import numpy as np
+
+def to_float(val):
+    #print(f'val type = {type(val)}, valeur = {val}')
+
+    val = np.float16(val)
+
+    #print(f'val type after conv = {type(val)}, valeur = {format(val, ".4g")}')
+    return val
 
 dashboard = {
-    'win_loss_quotient'         : 1.25,
+    'win_loss_quotient'         : 2.25,
     'equity_limit_ratio'        : 100.0,
     'goal'                      : 300,
     'risk_level'                : 10.0,
@@ -16,8 +26,7 @@ dashboard = {
     'base_currency'             : 'EUR'
 }
 
-data_generator_categorizing_threshold = 1.5
-certitude_degree_of_categorization = 1.15
+certitude_degree_of_categorization = 0.
 
 
 prediction_period = 15 # in days
@@ -65,36 +74,143 @@ orders_list = [
 ]
 
 symbols_list = [
-    'EURUSD','EURGBP','EURCAD','EURAUD','EURCHF','EURNZD',
-    'USDCHF','USDCAD','USDAUD','USDNZD',
-    'GBPCHF','GBPAUD','GBPCAD','GBPNZD','GBPUSD',
+    'EURUSD','EURGBP','EURCAD','EURAUD','EURCHF','EURNZD','EURSGD',
+    'USDCHF','USDCAD','USDJPY','USDSGD',
+    'GBPCHF','GBPAUD','GBPCAD','GBPNZD','GBPUSD','GBPJPY','GBPSGD',
+    'NZDUSD', 'NZDCAD', 'NZDCHF','NZDJPY', 'NZDSGD',
+    'AUDNZD', 'AUDCAD', 'AUDCHF','AUDUSD','AUDSGD','AUDJPY',
+    'CADCHF','CADJPY',
     'BTCUSD','XRPUSD','ETHUSD',
-    'eu', 'eg', 'ec', 'ea', 'ech', 'en', 
-    'uch', 'uc', 'ua', 'un',
-    'gch', 'ga', 'gc', 'gn', 'gu', 
+    'eu', 'eg', 'ec', 'ea', 'ech', 'en','es',
+    'uch', 'uc','uj','us',
+    'gch', 'ga', 'gc', 'gn', 'gu','gj','gs',
+    'nu','nc','nch','nj','ns'
+    'an','ac','ach','au','as','aj'
+    'cch','cj'
     'bu', 'xu', 'etu'
 ]
+#34
+demo = True
 
+## AUDNZD
+## BTCUSD.bc
+## ETHUSD.bc
+## EURCHF
+## GBPCAD
+## GBPNZD
+## GBPSGD
+## GBPUSD
+## XRPUSD.bc
+## USDCAD
+## NZDSGD
+## NZDCHF
+## NZDCAD
 pseudos = {
-    'eu' : 'EURUSD',
-    'eg' : 'EURGBP',
-    'ec' : 'EURCAD',
-    'ea' : 'EURAUD',
-    'ech': 'EURCHF',
-    'en' : 'EURNZD',
 
-    'uch': 'USDCHF',
+    'ech': 'EURCHF',
+
     'uc' : 'USDCAD',
 
-    'gch': 'GBPCHF',
-    'ga' : 'GBPAUD',
     'gc' : 'GBPCAD',
     'gn' : 'GBPNZD',
     'gu' : 'GBPUSD',
 
-    'bu' : 'BTCUSD.bc',
-    'xu' : 'XRPUSD.bc',
-    'etu': 'ETHUSD.bc'   
+    'gs' : 'GBPSGD',
+
+    'nc' : 'NZDCAD',
+    'nch': 'NZDCHF',
+
+    'ns' : 'NZDSGD',
+
+    'an' : 'AUDNZD',
+
+
+    'bu' : f'BTCUSD{demo * ".bc"}',
+    'xu' : f'XRPUSD{demo * ".bc"}',
+    'etu': f'ETHUSD{demo * ".bc"}',
+
+    'ac' : 'AUDCAD',
+    'ach': 'AUDCHF',
+    'au' : 'AUDUSD',
+    'as' : 'AUDSGD',
+    'aj' : 'AUDJPY',
+
+    'cch': 'CADCHF',
+    'cj' : 'CADJPY',
+    'nu' : 'NZDUSD',
+    'nj' : 'NZDJPY',
+    'gj' : 'GBPJPY',
+    'uj' : 'USDJPY',
+    'us' : 'USDSGD',
+
+    'gch': 'GBPCHF',
+    'ga' : 'GBPAUD',
+    'en' : 'EURNZD',
+    'es' : 'EURSGD',
+
+    'uch': 'USDCHF',
+    'eu' : 'EURUSD',
+    'eg' : 'EURGBP',
+    'ec' : 'EURCAD',
+    'ea' : 'EURAUD',
+}
+
+pseudos_ok = {
+
+    'ac' : 'AUDCAD',
+    'ach': 'AUDCHF',
+    'au' : 'AUDUSD',
+    'as' : 'AUDSGD',
+    'aj' : 'AUDJPY',
+
+    'cch': 'CADCHF',
+    'cj' : 'CADJPY',
+    'nu' : 'NZDUSD',
+    'nj' : 'NZDJPY',
+    'gj' : 'GBPJPY',
+    'uj' : 'USDJPY',
+    'us' : 'USDSGD',
+
+    'gch': 'GBPCHF',
+    'ga' : 'GBPAUD',
+    'en' : 'EURNZD',
+    'es' : 'EURSGD',
+
+    'uch': 'USDCHF',
+    'eu' : 'EURUSD',
+    'eg' : 'EURGBP',
+    'ec' : 'EURCAD',
+    'ea' : 'EURAUD'
+}
+
+pseudos_nok = {
+    'ech': 'EURCHF',
+
+    'uc' : 'USDCAD',
+
+    'gc' : 'GBPCAD',
+    'gn' : 'GBPNZD',
+    'gu' : 'GBPUSD',
+
+    'gs' : 'GBPSGD',
+
+    'nc' : 'NZDCAD',
+    'nch': 'NZDCHF',
+
+    'ns' : 'NZDSGD',
+
+    'an' : 'AUDNZD',
+
+
+    'bu' : f'BTCUSD{demo * ".bc"}',
+    'xu' : f'XRPUSD{demo * ".bc"}',
+    'etu': f'ETHUSD{demo * ".bc"}'
+}
+
+volatiles = {
+    'bu' : f'BTCUSD{demo * ".bc"}',
+    'xu' : f'XRPUSD{demo * ".bc"}',
+    'etu': f'ETHUSD{demo * ".bc"}'
 }
 
 def symbol_converter(pseudo):
@@ -102,7 +218,7 @@ def symbol_converter(pseudo):
         return pseudos[pseudo]
     else:
         return pseudo
-    
+
 # Définition du type d'ordre dans MetaTrader 5
 order_types = {
     'buy': mt5.ORDER_TYPE_BUY,
@@ -119,14 +235,47 @@ buy_orders  = ['buy', 'buy_limit', 'buy_now','buy_wide']
 sell_orders = ['sell', 'sell_limit', 'sell_now', 'sell_wide']
 markets = ['buy_market', 'sell_market']
 
-period=24 * prediction_period
-
+period = 24 * prediction_period
 testnum=25
-
 mean_period = 50
 mperiod = 24 * mean_period
+learning_rate = 0.0002
+max_depth = 7
+num_boost_round = 1000000
+phases = ['train','test']
+phase = "train"
+percentile = 2
 
-learning_rate_1 = 0.001
-learning_rate = 0.0001
-# act_threshold15_50_1.5_0.001.json
-model_in_use = f"validated/act_threshold{prediction_period}_{mean_period}_{data_generator_categorizing_threshold}_{learning_rate_1}.json"
+learning_trend = "bull"
+trends = ["bull","bear"]
+
+mode = "wide"
+
+# (-0.8156619971583823, 1.0387544105866593) 3
+# (-1.754685282490847, 2.024701438278825) 5
+# (-1.3613752829088148, 1.609018819619437) 4
+# (-1.1161564119504734, 1.3518697305903602) 3.5
+# (-0.944350051201875, 1.1724213566700838) 3.2
+# (-1.0329222428565212, 1.2651814128786065) 3.35
+# (-1.2688076022019643, 1.5121681900643036) 3.8
+narrow_factor = 0.2
+bulk_factor = 3.0
+narrowing_factors = [0.2, 1.0, 0.04]
+bulking_factors = [3.0 / 25.0, 9.0 / 25.0]
+testnum_wide=testnum
+testnum_narrow=ceil(testnum_wide * narrow_factor)
+testnum_short=ceil(testnum_narrow * narrow_factor)
+testnum_inter=floor(testnum_short * bulk_factor)
+testnum_bulk=floor(testnum_inter * bulk_factor)
+test_data_path = "dtest.csv"
+
+
+modes = ["wide", "narrow", "short","bulk","inter"]
+folder = f"{learning_trend}_data"
+modelfile_extension = ".json"
+testfile_extension = ".csv"
+extensions = [".json", ".ubj", ".bin", ".joblib", ".pkl"]
+narfact = 1.0 # to choose on which time scale you which to perform  modelling and tests
+model_in_use = f"M{prediction_period}_{mean_period}_{learning_rate}_{percentile}_{learning_trend}_{mode}_{testnum * narfact}{modelfile_extension}"
+
+

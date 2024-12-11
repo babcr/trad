@@ -9,6 +9,10 @@ Makefile.in
 .deps/
 .dirstamp
 *.csv
+/bull_data
+/bear_data
+*.json
+
 
 # http://www.gnu.org/software/autoconf
 
