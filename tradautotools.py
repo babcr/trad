@@ -3,7 +3,7 @@ from tradparams import deviation, max_spread, limit_spread, spreads, volatiles, 
 from math import ceil, floor
 from statistics import mean
 from os import path, remove
-
+from datetime import datetime, timedelta
 
 class RiskTooHighException(Exception):
     """Exception raised when calculated risk exceeds acceptable limits."""
@@ -137,21 +137,18 @@ def get_prices(symbol):
 
 def get_equity():
     init_metatrader_connexion()
-
     # Retrieve account information
     account_info = mt5.account_info()
     if account_info is not None:
         # Access the equity attribute
-        equity = account_info.equity * dashboard['equity_limit_ratio'] / 100.0
+        equity = account_info.equity * dashboard['equity_limit_ratio']
     else:
         print("Failed to retrieve account information")
-
+        close_metatrader_connexion()
+        return None
     # Shut down the connection to MetaTrader 5
-    mt5.shutdown()
+    close_metatrader_connexion()
     return equity
-
-
-from datetime import datetime, timedelta
 
 def candle_size(symbol, delta_timeframe_pair):
     # Initialize MetaTrader5
@@ -202,7 +199,7 @@ def get_minimal_lot_size(symbol):
     # Check if symbol information is retrieved successfully
     if symbol_info is None:
         print(f"Symbol {symbol} not found")
-        mt5.shutdown()
+        close_metatrader_connexion()
         return None
 
     # Retrieve the lot size (contract size) for the symbol
@@ -220,6 +217,8 @@ def get_volume_step(symbol):
 
     if info_symbole is None:
         print(f"Error : symbol info unfound ({symbol})")
+        close_metatrader_connexion()
+        return None
     else:
         volume_step = info_symbole.volume_step
     close_metatrader_connexion()
@@ -228,9 +227,7 @@ def get_volume_step(symbol):
 
 def get_lot_value_and_currency(symbol):
     # Initialize MetaTrader5
-    if not mt5.initialize():
-        print("MetaTrader5 initialization failed")
-        return None
+    init_metatrader_connexion()
 
     # Get symbol information
     symbol_info = mt5.symbol_info(symbol)
@@ -238,7 +235,7 @@ def get_lot_value_and_currency(symbol):
     # Check if symbol information is retrieved successfully
     if symbol_info is None:
         print(f"Symbol {symbol} not found")
-        mt5.shutdown()
+        close_metatrader_connexion()
         return None
 
     # Get the lot value and the currency for the symbol
@@ -246,7 +243,7 @@ def get_lot_value_and_currency(symbol):
     currency = symbol_info.currency_profit
 
     # Close MetaTrader5 connection
-    mt5.shutdown()
+    close_metatrader_connexion()
 
     return lot_value, currency
 
@@ -270,14 +267,14 @@ def get_risk_value_and_lot_size(symbol, loss_variance, contract_size, conversion
             break
         else:
             risk = test_risk
-            desired_lot_size = desired_lot_size + volume_step
+            desired_lot_size += volume_step
     if risk == None:
         if test_risk - risk_level <= accepted_risk_overrun:
             risk = test_risk
         else:
             raise RiskTooHighException(test_risk)
     else:
-        desired_lot_size = desired_lot_size - volume_step
+        desired_lot_size -= volume_step
     print(f"Max loss = {get_loss(risk)}")
     return risk, desired_lot_size
 
@@ -403,14 +400,8 @@ def get_attributes(
 
     contract_size = get_contract_size(symbol)
 
-    if symbol[:3] == dashboard['base_currency']:
-        conversion_price = loss_price
-    else:
-        conversion_price = 1 # get_conversion_factor(symbol)
-    print(f"Conversion price = {conversion_price}")
-
     if not volume:
-        risk, calc_volume = get_risk_value_and_lot_size(symbol, loss_variance, contract_size, conversion_price)
+        risk, calc_volume = get_risk_value_and_lot_size(symbol, loss_variance, contract_size, loss_price)
 
 
     print(f"risk = {risk} %")

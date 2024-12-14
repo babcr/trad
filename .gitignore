@@ -10,14 +10,7 @@ Makefile.in
 .dirstamp
 *.csv
 M*.json
-M15_50_0.0002_2_bear_bulk_9.0.json
-M15_50_0.0002_2_bull_bulk_9.0.json
-M15_50_0.0002_2_bear_narrow_5.0.json
-M15_50_0.0002_2_bull_narrow_5.0.json
-M15_50_0.0003_2_bear_inter_3.0.json
-M15_50_0.0003_2_bull_inter_3.0.json
-M15_50_0.0003_2_bear_short_1.0.json
-M15_50_0.0003_2_bull_short_1.0.json
+
 
 # http://www.gnu.org/software/autoconf
 

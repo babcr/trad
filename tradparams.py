@@ -14,7 +14,7 @@ def to_float(val):
 
 dashboard = {
     'win_loss_quotient'         : 1.15,
-    'equity_limit_ratio'        : 100.0,
+    'equity_limit_ratio'        : 1.0,
     'goal'                      : 300,
     'risk_level'                : 6.0,
     'accepted_risk_overrun'     : 0.25,
@@ -23,7 +23,7 @@ dashboard = {
     'medium_high_offset_ratio'  : 0.05,
     'max_offset_ratio'          : 0.1,
     'stop_offset_ratio'         : 0.025,
-    'loss_shrink_ratio'         : 0.5,
+    'loss_shrink_ratio'         : 0.1,
     'simple_to_volatile_ratio'  : 4,
     'defaultTradingMode'        : 'swing',
     'defaultDeltaTimeframePair' : 'h',
@@ -84,7 +84,7 @@ limit_correlation = 0.3
 unfilled_order_lifespan_min = 5
 
 
-prediction_period = 15 # in days
+prediction_period = 30 # in days
 minutes_in_a_year = 525600
 hours_before_repeat_order = 5
 
@@ -149,6 +149,7 @@ symbols_list = [
     'cch','cj'
     'bu', 'xu', 'etu'
 ]
+demo = True
 #34
 pseudos = {
     'eu' : 'EURUSD',
@@ -188,19 +189,19 @@ pseudos = {
     'cch': 'CADCHF',
     'cj' : 'CADJPY',
 
-    'bu' : 'BTCUSD.bc',
-    'xu' : 'XRPUSD.bc',
-    'etu': 'ETHUSD.bc'
+    'bu' : f'BTCUSD{demo * ".bc"}',
+    'etu': f'ETHUSD{demo * ".bc"}',
+    'xu' : f'XRPUSD{demo * ".bc"}'
 }
 pseudos_we = {
-    'bu' : 'BTCUSD.bc',
-    'xu' : 'XRPUSD.bc',
-    'etu': 'ETHUSD.bc'
+    'bu' : f'BTCUSD{demo * ".bc"}',
+    'xu' : f'XRPUSD{demo * ".bc"}',
+    'etu': f'ETHUSD{demo * ".bc"}'
 }
 volatiles = {
-    'BTCUSD.bc',
-    'XRPUSD.bc',
-    'ETHUSD.bc'
+    f'BTCUSD{demo * ".bc"}',
+    f'XRPUSD{demo * ".bc"}',
+    f'ETHUSD{demo * ".bc"}'
 }
 
 def symbol_converter(pseudo):
