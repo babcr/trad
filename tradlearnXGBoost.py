@@ -2,8 +2,8 @@
 import locale
 locale.setlocale(locale.LC_NUMERIC, 'C')  # 'C' locale forces '.' as the decimal separator
 
-import pandas as pd
-from numpy import float64
+from pandas import read_csv, DataFrame, to_numeric, concat
+from numpy import float64, mean , array, float32, column_stack
 import functools
 from math import ceil
 from tradautotools import rmfile
@@ -16,7 +16,7 @@ import argparse
 from scipy.sparse import csr_matrix
 import xgboost as xgb
 from collections import deque
-from tradparams import to_float, np, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, certitude_degree_of_categorization, testnum, period, folder, mode
+from tradparams import initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, certitude_degree_of_categorization, testnum, period, folder, mode
 
 
 def xdump(model,filepath):
@@ -63,9 +63,9 @@ def save_dtest_csv(dtest : xgb.DMatrix, csv_name):
 
     # Convert to a pandas DataFrame (assumes X_test is a NumPy array or scipy sparse matrix)
     if hasattr(X_test, 'todense'):  # If it's a sparse matrix
-        X_test = pd.DataFrame(X_test.todense())
+        X_test = DataFrame(X_test.todense())
     else:
-        X_test = pd.DataFrame(X_test)
+        X_test = DataFrame(X_test)
 
     # Add labels as a column (optional)
     X_test['label'] = y_test
@@ -75,7 +75,7 @@ def save_dtest_csv(dtest : xgb.DMatrix, csv_name):
 
 def load_csv_to_dtest(csvfilepath):
     # Load CSV using pandas
-    df = pd.read_csv(csvfilepath)
+    df = read_csv(csvfilepath)
 
 
     # Assuming 'label' column contains the target, but if not, print available columns
@@ -85,7 +85,7 @@ def load_csv_to_dtest(csvfilepath):
     else:
         label_column = 'label'
 
-    df[label_column] = pd.to_numeric(df[label_column], errors='coerce').fillna(0).astype('Int32')
+    df[label_column] = to_numeric(df[label_column], errors='coerce').fillna(0).astype('Int32')
 
 
     # Separate features and labels
@@ -96,33 +96,33 @@ def load_csv_to_dtest(csvfilepath):
     dtest = xgb.DMatrix(X_test, label=y_test)
     return dtest
 
-def calculate_accuracy(bst, dtest, y_test, mode=mode, learningrate=learning_rate, trend=learning_trend):
+def calculate_accuracy(bst, dtest, y_test, mode=mode, learningrate=learning_rate, trend=learning_trend,initialthresh=initial_thresh):
     narfact = mode_to_narfact(mode)
     preds = bst.predict(dtest)
     # Exemple de conversion des scores de prédiction (logits) en probabilités avec softmax
     #logits = bst.predict(dtest, output_margin=True)  # Obtenez les scores bruts
-    #preds_prob = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
+    #preds_prob = exp(logits) / sum(exp(logits), axis=1, keepdims=True)
     preds_prob = preds
     # Pour afficher la probabilité d'appartenance à la classe 1 dans un problème binaire :
     #print([for p0, p1 in preds_prob where p0 - p1 >][:10])  # Affiche les 10 premières prédictions de probabilité.
     print(preds_prob[:30])
-    threshold = 0.45
+    threshold = initialthresh
     while (threshold != 1000.0):
-        up_a = (np.array(preds_prob) > float(threshold)) # (np.array([vec[1] for vec in preds_prob]) > float(threshold))
-        up_b = ((1 - np.array(preds_prob)) >= (1-float(threshold))) # (np.array([vec[0] for vec in preds_prob]) > float(threshold))
+        up_a = (array(preds_prob) > float(threshold)) # (array([vec[1] for vec in preds_prob]) > float(threshold))
+        up_b = (array(preds_prob) <= float(threshold)) # (array([vec[0] for vec in preds_prob]) > float(threshold))
 
-        good_a = up_a # & (np.array(preds.ravel()) == 1))
-        good_b = up_b # & (np.array(preds.ravel()) == 0))
+        good_a = up_a # & (array(preds.ravel()) == 1))
+        good_b = up_b # & (array(preds.ravel()) == 0))
 
-        false_a = np.mean(good_a & (y_test == 0))
-        false_b = np.mean(good_b & (y_test == 1))
+        false_a = mean(good_a & (y_test == 0))
+        false_b = mean(good_b & (y_test == 1))
 
-        true_a = np.mean(good_a & (y_test == 1))
-        true_b = np.mean(good_b & (y_test == 0))
+        true_a = mean(good_a & (y_test == 1))
+        true_b = mean(good_b & (y_test == 0))
 
-        total_trad = np.mean((y_test == 1))
+        total_trad = mean((y_test == 1))
 
-        edge_a = true_a - false_a
+        edge_a = (true_a) / (true_a + false_a) * 100.0
         tot_a = true_a + false_a
 
         #edge_b = true_b - false_b
@@ -140,7 +140,7 @@ Prediction label period = {testnum * narfact}\n
         ''')
         print(f"\nTest True {trend}: {true_a:.8f}")
         print(f"Test false {trend}: {false_a:.8f}")
-        print(f"{trend} edge: {edge_a:.8f}")
+        print(f"{trend} edge: {edge_a:.8f} %")
         print(f"Test tot {trend}: {tot_a:.8f}")
 
         print(f"\n\nTest True neutral: {true_b:.8f}")
@@ -149,12 +149,12 @@ Prediction label period = {testnum * narfact}\n
 
         win = true_a * (true_b + false_b)
         loss = false_a * (true_b + false_b)
-        edge = win - loss
+        edge = (win - loss) / loss * 100
 
         print(f"\n\nTest loss: {loss:.8f}")
         print(f"Test win: {win:.8f}")
         print(f"Total activation: {win + loss:.8f}")
-        print(f"edge: {edge:.8f}")
+        print(f"edge: {edge:.8f} %")
 
         print(f"\nTest total real opportunity: { total_trad:.8f}")
         print(f"Test total activation: { win + loss:.8f}")
@@ -164,17 +164,17 @@ Prediction label period = {testnum * narfact}\n
         print(f"\n=======================================================")
 
 def compute_tot_a(threshold, preds_prob, y_test, total_trad):
-    up_a = (np.array(float64(preds_prob)) > float64(threshold)) # (np.array([vec[1] for vec in preds_prob]) > float(threshold))
+    good_a = (array(float64(preds_prob)) > float64(threshold)) # (array([vec[1] for vec in preds_prob]) > float(threshold))
 
-    good_a = up_a # & (np.array(preds.ravel()) == 1))
+    # & (array(preds.ravel()) == 1))
 
-    false_a = float64(np.mean(good_a & (y_test == 0)))
+    false_a = float64(mean(good_a & (y_test == 0)))
 
-    true_a = float64(np.mean(good_a & (y_test == 1)))
+    true_a = float64(mean(good_a & (y_test == 1)))
 
     tot_a = true_a + false_a
 
-    return float64(tot_a / (total_trad * 2))
+    return float64(tot_a / pow(total_trad * 2, 2))
 
 
 def optimize_threshold(target, preds_prob,y_test, initial_threshold, epsilon=epsilon, eta=1e-2, max_iterations=200000, delta_thresh=1e-4):
@@ -190,7 +190,7 @@ def optimize_threshold(target, preds_prob,y_test, initial_threshold, epsilon=eps
     :param delta_thresh: Pas pour l'approximation de la dérivée.
     :return: Le threshold final, la valeur tot_a associée et le nombre d'itérations.
     """
-    total_trad = np.mean((y_test == 1))
+    total_trad = mean((y_test == 1))
     print(f"total_trad = {total_trad}")
     threshold = initial_threshold
     error = 1.0
@@ -313,7 +313,7 @@ Prediction label period = {testnum * narfact}\n
     preds = bst.predict(dtest)
     # Exemple de conversion des scores de prédiction (logits) en probabilités avec softmax
     #logits = bst.predict(dtest, output_margin=True)  # Obtenez les scores bruts
-    #preds_prob = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
+    #preds_prob = exp(logits) / sum(exp(logits), axis=1, keepdims=True)
     preds_prob = preds
     # Pour afficher la probabilité d'appartenance à la classe 1 dans un problème binaire :
     #print([for p0, p1 in preds_prob where p0 - p1 >][:10])  # Affiche les 10 premières prédictions de probabilité.
@@ -327,10 +327,11 @@ Prediction label period = {testnum * narfact}\n
         final_threshold, final_tot_a, iterations =iterate_threshold_with_custom_cycle(
             threshold_start=threshold, optimization_function=optimize_threshold, target=target,preds_prob=preds_prob,y_test=y_test, step=0.001
         )
-
         print(f"\nFinal threshold = {final_threshold}")
         print(f"\nFinal total a = {final_tot_a}")
         print(f"\niterations = {iterations}")
+
+        calculate_accuracy(bst,dtest,y_test,mode,learningrate,trend,final_threshold)
 
 def test_model(learningrate=learning_rate, trend=learning_trend, mode=mode,extension=modelfile_extension, test_extension=testfile_extension):
     # Make predictions
@@ -360,7 +361,7 @@ def save_test_data(dtest : xgb.DMatrix, filepath='dtest.buffer'):
 def datas(symbol, folder = folder, mode = mode):
     # Concaténer tous les DataFrames dans un seul DataFrame
     narfact = mode_to_narfact(mode)
-    df = pd.read_csv(f"{folder}/{mode}/{symbol}_{period}_{ceil(testnum * narfact)}_data.csv", dtype=np.float32)
+    df = read_csv(f"{folder}/{mode}/{symbol}_{period}_{ceil(testnum * narfact)}_data.csv", dtype=float32)
 
     num_features = period + 1
     # Vérification du nombre de colonnes
@@ -369,7 +370,7 @@ def datas(symbol, folder = folder, mode = mode):
 
     # Division des features et des labels
     features = df.iloc[:, :-1].values  # Toutes les colonnes sauf la dernière
-    #features = pd.concat([df_timestamp, features], axis=1).values
+    #features = concat([df_timestamp, features], axis=1).values
     labels = df.iloc[:, -1].values     # Dernière colonne pour les labels
 
     # Création du dataset tf.data à partir de numpy
@@ -432,18 +433,18 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
         labels_np = labels.numpy()  # Convert the labels
 
         # Stack features into a single 2D NumPy array
-        features_np = np.column_stack(features_np)
+        features_np = column_stack(features_np)
 
         # Convert features and labels to a DataFrame
         batch_dict = {f"feature_{i+1}": features_np[:, i] for i in range(features_np.shape[1])}
         batch_dict['label'] = labels_np  # Add labels to the DataFrame
 
         # Create a DataFrame for the batch and append it to the list
-        batch_df = pd.DataFrame(batch_dict)
+        batch_df = DataFrame(batch_dict)
         dataframes.append(batch_df)
 
     # Concatenate all DataFrames into a single DataFrame
-    full_df = pd.concat(dataframes, ignore_index=True)
+    full_df = concat(dataframes, ignore_index=True)
 
     # Display the resulting DataFrame (first few rows)
     print(full_df.head())
@@ -470,18 +471,18 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
         labels_np = labels.numpy()  # Convert the labels
 
         # Stack features into a single 2D NumPy array
-        features_np = np.column_stack(features_np)
+        features_np = column_stack(features_np)
 
         # Convert features and labels to a DataFrame
         batch_dict = {f"feature_{i+1}": features_np[:, i] for i in range(features_np.shape[1])}
         batch_dict['label'] = labels_np  # Add labels to the DataFrame
 
         # Create a DataFrame for the batch and append it to the list
-        batch_df = pd.DataFrame(batch_dict)
+        batch_df = DataFrame(batch_dict)
         dataframes.append(batch_df)
 
     # Concatenate all DataFrames into a single DataFrame
-    full_df = pd.concat(dataframes, ignore_index=True)
+    full_df = concat(dataframes, ignore_index=True)
 
     # Display the resulting DataFrame (first few rows)
     print(full_df.head())

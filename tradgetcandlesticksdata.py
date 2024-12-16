@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 import argparse
 
-import tradparams as tp
+from tradparams import pseudos
 
 
 def load_candles(symbol, year_start):
@@ -42,11 +42,11 @@ def load_candles(symbol, year_start):
     return candles_df
 
 def main(start_year):
-    for x in tp.pseudos:
-        candles_df = load_candles(tp.pseudos[x], start_year)
+    for x in pseudos:
+        candles_df = load_candles(pseudos[x], start_year)
         if candles_df is not None:
             # Sauvegarder dans un fichier CSV si besoin
-            candles_df.to_csv(f'{tp.pseudos[x]}_candlesticks.csv', index=False)
+            candles_df.to_csv(f'raw_data/{pseudos[x]}_candlesticks.csv', index=False)
 
 
 if __name__ == '__main__':

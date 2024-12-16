@@ -1,13 +1,9 @@
 import MetaTrader5 as mt5
 from math import ceil, floor
-import numpy as np
+from numpy import float16
 
 def to_float(val):
-    #print(f'val type = {type(val)}, valeur = {val}')
-
-    val = np.float16(val)
-
-    #print(f'val type after conv = {type(val)}, valeur = {format(val, ".4g")}')
+    val = float16(val)
     return val
 
 dashboard = {
@@ -29,7 +25,7 @@ dashboard = {
 certitude_degree_of_categorization = 0.
 
 
-prediction_period = 15 # in days
+prediction_period = 30 # in days
 minutes_in_a_year = 525600
 hourly  = (24 * prediction_period * 2, mt5.TIMEFRAME_H1)
 min5    = (2 * prediction_period * 2, mt5.TIMEFRAME_M5)
@@ -38,6 +34,7 @@ hour6   = (24 * 6 * prediction_period * 2, mt5.TIMEFRAME_H6)
 daily   = (24 * 24 * prediction_period * 2, mt5.TIMEFRAME_D1)
 
 delta_timeframe_pairs = [hourly, min5, min15, hour6, daily]
+initial_thresh = 0.5
 
 delta_timeframe_pair_pseudos = {
     'h' : hourly,
@@ -236,7 +233,7 @@ sell_orders = ['sell', 'sell_limit', 'sell_now', 'sell_wide']
 markets = ['buy_market', 'sell_market']
 
 period = 24 * prediction_period
-testnum=25
+testnum = 25
 mean_period = 50
 mperiod = 24 * mean_period
 learning_rate = 0.0002
@@ -260,10 +257,10 @@ mode = "wide"
 # (-1.2688076022019643, 1.5121681900643036) 3.8
 narrow_factor = 0.2
 bulk_factor = 3.0
-narrowing_factors = [0.2, 1.0, 0.04]
-bulking_factors = [3.0 / 25.0, 9.0 / 25.0]
-testnum_wide=testnum
-testnum_narrow=ceil(testnum_wide * narrow_factor)
+narrowing_factors = [0.2, 0.6, 0.04]
+bulking_factors = [0.12 , 0.36]
+testnum_wide=15
+testnum_narrow=ceil(testnum * narrow_factor)
 testnum_short=ceil(testnum_narrow * narrow_factor)
 testnum_inter=floor(testnum_short * bulk_factor)
 testnum_bulk=floor(testnum_inter * bulk_factor)

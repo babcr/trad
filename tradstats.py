@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import pandas as pd
-from tradparams import np, mean_period
-from tradparams import to_float, pseudos
+from pandas import read_csv
+from tradparams import mean_period, to_float, pseudos
 import tradautotools as ta
 from collections import deque
 
@@ -66,7 +65,7 @@ def create_candlestick_score_csv(input_csv, output_csv):
     :param base: Base utilisée pour le calcul du score des chandeliers.
     """
     # Lire le fichier CSV d'entrée
-    df = pd.read_csv(input_csv)
+    df = read_csv(input_csv)
 
     # Calculer le score des chandeliers pour chaque ligne
     df['candle_score'] = df.apply(lambda row: format(calculate_candlestick_score(row), ".4g"), axis=1)
@@ -87,10 +86,9 @@ def main():
         base_sum_support = deque()
         base_sum = 0
         ta.rmfile(f"{pseudos[x]}_scores.csv")
-        candles_scores_df = create_candlestick_score_csv(f"{pseudos[x]}_candlesticks.csv", f"{pseudos[x]}_scores.csv")
+        candles_scores_df = create_candlestick_score_csv(f"raw_data/{pseudos[x]}_candlesticks.csv", f"raw_data/{pseudos[x]}_scores.csv")
         print(candles_scores_df)
 
 
 if __name__ == '__main__':
-
     main()

@@ -71,7 +71,7 @@ def create_label_list(input_csv, period, testnum):
 def frontiers(period, testnum):
     llist = []
     for x in pseudos:
-        llist = llist+create_label_list(f"{pseudos[x]}_scores.csv", period, testnum)
+        llist = llist+create_label_list(f"raw_data/{pseudos[x]}_scores.csv", period, testnum)
 
     front = find_division_points(llist)
 
@@ -90,7 +90,7 @@ def create_custom_csv(input_csv, output_bull_csv, output_bear_csv, period, testn
     df = pd.read_csv(input_csv)
 
     # Liste pour stocker les lignes valides à ajouter au nouveau fichier CSV
-    #rows_bull = []
+    rows_bull = []
     rows_bear = []
     # Boucle pour parcourir les scores en partant du 480ème plus ancien jusqu'au 6ème plus récent
     for i in range(len(df) - period):  # Assure qu'on peut avoir 480 scores + 5 pour la somme suivante
@@ -109,51 +109,49 @@ def create_custom_csv(input_csv, output_bull_csv, output_bear_csv, period, testn
 
         # Ajouter la fenêtre des scores et la somme des 5 scores suivants
         myn = minute_in_year_normalization(time_stamp)
-        '''
+        
         if next_five_sum > front[1]:
             val_bull = 1
         elif next_five_sum < front[1]:
             val_bull = 0
         else:
             continue
-        '''
+        
 
-        if next_five_sum < -front[0]:
+        if next_five_sum < -front[1]:
             val_bear = 1
-        elif next_five_sum > -front[0]:
+        elif next_five_sum > -front[1]:
             val_bear = 0
         else:
             continue
 
-        # rows_bull.append([myn] + scores_window + [val_bull])
+        rows_bull.append([myn] + scores_window + [val_bull])
         rows_bear.append([myn] + scores_window + [val_bear])
 
     # Créer un DataFrame pour les lignes sélectionnées
-    # result_df_bull = pd.DataFrame(rows_bull)
+    result_df_bull = pd.DataFrame(rows_bull)
     result_df_bear = pd.DataFrame(rows_bear)
 
     # Enregistrer le DataFrame dans le fichier de sortie
-    #result_df_bull.to_csv(output_bull_csv, index=False, header=False)
-    #print(f"Fichier {output_bull_csv} créé avec succès avec {len(rows_bull)} lignes.")
+    result_df_bull.to_csv(output_bull_csv, index=False, header=False)
+    print(f"Fichier {output_bull_csv} créé avec succès avec {len(rows_bull)} lignes.")
     result_df_bear.to_csv(output_bear_csv, index=False, header=False)
     print(f"Fichier {output_bear_csv} créé avec succès avec {len(rows_bear)} lignes.")
 
 
-
-
 def main(period, testnum_wide=testnum_wide, testnum_narrow=testnum_narrow, testnum_short=testnum_short, testnum_inter=testnum_inter, testnum_bulk=testnum_bulk):
     front_wide = frontiers(period, testnum_wide)
-    front_narrow = frontiers(period, testnum_narrow)
-    front_short = frontiers(period, testnum_short)
-    front_inter = frontiers(period, testnum_inter)
     front_bulk = frontiers(period, testnum_bulk)
+    front_narrow = frontiers(period, testnum_narrow)
+    front_inter = frontiers(period, testnum_inter)
+    front_short = frontiers(period, testnum_short)
     for x in pseudos:
         #ta.rmfile(f"{pseudos[x]}_data.csv")
-        create_custom_csv(f"{pseudos[x]}_scores.csv",f"bull_data/wide/{pseudos[x]}_{period}_{testnum_wide}_data.csv", f"bear_data/wide/{pseudos[x]}_{period}_{testnum_wide}_data.csv", period + testnum_wide, testnum_wide, front_wide)
-        create_custom_csv(f"{pseudos[x]}_scores.csv",f"bull_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_data.csv", f"bear_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_data.csv", period + testnum_narrow, testnum_narrow, front_narrow)
-        create_custom_csv(f"{pseudos[x]}_scores.csv",f"bull_data/short/{pseudos[x]}_{period}_{testnum_short}_data.csv", f"bear_data/short/{pseudos[x]}_{period}_{testnum_short}_data.csv", period + testnum_short, testnum_short, front_short)
-        create_custom_csv(f"{pseudos[x]}_scores.csv",f"bull_data/inter/{pseudos[x]}_{period}_{testnum_inter}_data.csv", f"bear_data/inter/{pseudos[x]}_{period}_{testnum_inter}_data.csv", period + testnum_inter, testnum_inter, front_inter)
-        create_custom_csv(f"{pseudos[x]}_scores.csv",f"bull_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_data.csv", f"bear_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_data.csv", period + testnum_bulk, testnum_bulk, front_bulk)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/wide/{pseudos[x]}_{period}_{testnum_wide}_data.csv", f"bear_data/wide/{pseudos[x]}_{period}_{testnum_wide}_data.csv", period + testnum_wide, testnum_wide, front_wide)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_data.csv", f"bear_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_data.csv", period + testnum_narrow, testnum_narrow, front_narrow)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/short/{pseudos[x]}_{period}_{testnum_short}_data.csv", f"bear_data/short/{pseudos[x]}_{period}_{testnum_short}_data.csv", period + testnum_short, testnum_short, front_short)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/inter/{pseudos[x]}_{period}_{testnum_inter}_data.csv", f"bear_data/inter/{pseudos[x]}_{period}_{testnum_inter}_data.csv", period + testnum_inter, testnum_inter, front_inter)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_data.csv", f"bear_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_data.csv", period + testnum_bulk, testnum_bulk, front_bulk)
 
 
 
