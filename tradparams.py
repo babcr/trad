@@ -28,52 +28,33 @@ dashboard = {
     'defaultTradingMode'        : 'swing',
     'defaultDeltaTimeframePair' : 'h',
     'base_currency'             : 'EUR',
-    #'bull_binary_wide_threshold'  : 0.56532, #  0.00020990
-    #'bear_binary_wide_threshold'  : 0.51,   # 0.0
-    'bull_binary_narrow_threshold': 0.583404798283354, # 0.007197525575728751
-    'bull_binary_short_threshold' : 0.6147522934837489, # 0.007197384001368012
-    'bull_binary_inter_threshold' : 0.6022845923473124, # 0.007197181178425822
-    'bull_binary_bulk_threshold'  : 0.564222691309165, # 0.007196535577458332
 
-    'bear_binary_narrow_threshold': 0.4774130875077242, # 0.007196824955709174
-    'bear_binary_short_threshold' : 0.5147615199424868, # 0.007197727174090852
-    'bear_binary_inter_threshold' : 0.4990051021701212, # 0.0071968194950124366
-    'bear_binary_bulk_threshold'  : 0.45677515455850176, # 0.007196416933495793
+    'bull_binary_wide_threshold'  : 0.5410273671465529, #  0.00959177 # 51.05457708 %
+    'bull_binary_narrow_threshold': 0.6066448386920055, # 0.00097475 # 171.03174603 %
+    'bull_binary_short_threshold' : 0.6147522934837489, # 0.00125194 # 696.26865672 %
+    'bull_binary_inter_threshold' : 0.6723362966039078, # 0.00180973 # 445.35315985 %
+    'bull_binary_bulk_threshold'  : 0.5674194557332408, # 0.00096757 # 35.53299492 %
 
-    #'bull_binary_wide_comb'  : 0.565184951930333,
-    #'bear_binary_wide_comb'  : 0.5,   # 0.0
-    'bull_binary_narrow_comb': 0.5530381813900536, # 0.11338179460910383
-    'bull_binary_short_comb' : 0.5400545615244122, # 0.11338198806861995
-    'bull_binary_inter_comb' : 0.549506785268383, # 0.11338177439040224
-    'bull_binary_bulk_comb'  : 0.5529538988438077, # 0.11338125020465635
+    'bear_binary_wide_threshold'  : 0.55,   # 0.0
+    'bear_binary_bulk_threshold'  : 0.46361611197629554, # 0.00152330 9.31232092 %
+    'bear_binary_narrow_threshold': 0.55, # 0.007196824955709174
+    'bear_binary_inter_threshold' : 0.55, # 0.0
+    'bear_binary_short_threshold' : 0.5344367984097811, # 0.00024184 # 79.51807229 %
 
-    'bear_binary_narrow_comb': 0.45339694696911087, # 0.11338190850036475
-    'bear_binary_short_comb' : 0.494469045250951, # 0.11338006069326532
-    'bear_binary_inter_comb' : 0.47345983847696615, # 0.11338102030902121
-    'bear_binary_bulk_comb'  : 0.4317358144988849 # 0.11337965061913803
+
+    'bull_binary_wide_comb'  : 0.5410273671465529, # 0.00959177 # 4.30919591 %
+    'bull_binary_bulk_comb'  : 0.538786590245818, # 0.31900361 # 53.10746281 %
+    'bull_binary_narrow_comb': 0.5308940411420445, # 0.32165022 # 54.09988559 %
+    'bull_binary_inter_comb' : 0.5234007839186757, # 0.32367729 # 53.86178665 %
+    'bull_binary_short_comb' : 0.5129320037582746, # 0.32660352 # 53.28599014 %
+    
+    'bear_binary_wide_comb'  : 0.55,   # 0.0
+    'bear_binary_bulk_comb'  : 0.46361611197629554, # 0.00152330 # 9.31232092 %
+    'bear_binary_narrow_comb': 0.55, # 0.0
+    'bear_binary_inter_comb' : 0.55, # 0.0
+    'bear_binary_short_comb' : 0.5307867692232212, # 0.00045136 # 60.96997691 %  
 }
 
-dashboard2 = {
-    'bull_binary_narrow_threshold': 0.5815593672108603, # 0.00883
-    'bull_binary_short_threshold' : 0.6080526976936248, # 0.00883
-    'bull_binary_inter_threshold' : 0.5986122660162314, # 0.00883
-    'bull_binary_bulk_threshold'  : 0.5635191578539142, # 0.00883
-
-    'bear_binary_narrow_threshold': 0.47546789825352226, # 0.00883 # 0.47017644667952435, # 0.017821
-    'bear_binary_short_threshold' : 0.513359848438987, # 0.00883 # 0.5090152800705919, # 0.017821
-    'bear_binary_inter_threshold' : 0.4970527687143775, # 0.00883 # 0.4915199141875779, # 0.017821
-    'bear_binary_bulk_threshold'  : 0.4544354476166901, # 0.00883 #0.4487391455873384, # 0.017821
-
-    'bull_binary_narrow_comb': 0.5511242783610621, # 0.12751
-    'bull_binary_short_comb' : 0.5374584301933921, # 0.12751
-    'bull_binary_inter_comb' : 0.5469676956981749, # 0.12751
-    'bull_binary_bulk_comb'  : 0.5521594874757811, # 0.12751
-
-    'bear_binary_narrow_comb': 0.4510338879865221, # 0.12751 # 0.4452927478811478, # 0.195588
-    'bear_binary_short_comb' : 0.4928303303471458, # 0.12751 # 0.48780455645129395, # 0.195589
-    'bear_binary_inter_comb' : 0.4710052883619704, # 0.12751
-    'bear_binary_bulk_comb'  : 0.4291395023153211 # 0.12751 # 0.42340164752977744 # 0.195588
-}
 data_generator_categorizing_threshold = 1.5
 certitude_degree_of_categorization = 1.15
 spreads = []
@@ -236,14 +217,13 @@ testnum=25
 learning_rate_1 = 0.001
 learning_rate = 0.0001
 # act_threshold15_50_1.5_0.001.json
-model_in_use_wide_bull = f"M15_50_0.0001_2_bull_wide_25.0.json"
-model_in_use_wide_bear = f"M15_50_0.0001_2_bear_wide_25.0.json"
-model_in_use_narrow_bull = f"M15_50_0.0002_2_bull_narrow_5.0.json"
-model_in_use_narrow_bear = f"M15_50_0.0002_2_bear_narrow_5.0.json"
-model_in_use_short_bull = f"M15_50_0.0003_2_bull_short_1.0.json"
-model_in_use_short_bear = f"M15_50_0.0003_2_bear_short_1.0.json"
-
-model_in_use_inter_bull = f"M15_50_0.0003_2_bull_inter_3.0.json"
-model_in_use_inter_bear = f"M15_50_0.0003_2_bear_inter_3.0.json"
-model_in_use_bulk_bull = f"M15_50_0.0002_2_bull_bulk_9.0.json"
-model_in_use_bulk_bear = f"M15_50_0.0002_2_bear_bulk_9.0.json"
+model_in_use_wide_bull = f"M30_50_0.0003_2_bull_wide_25.0.json"
+model_in_use_wide_bear = f"M30_50_0.0003_2_bear_wide_25.0.json"
+model_in_use_narrow_bull = f"M30_50_0.0003_2_bull_narrow_5.0.json"
+model_in_use_narrow_bear = f"M30_50_0.0003_2_bear_narrow_5.0.json"
+model_in_use_short_bull = f"M30_50_0.0003_2_bull_short_1.0.json"
+model_in_use_short_bear = f"M30_50_0.0003_2_bear_short_1.0.json"
+model_in_use_inter_bull = f"M30_50_0.0003_2_bull_inter_3.0.json"
+model_in_use_inter_bear = f"M30_50_0.0003_2_bear_inter_3.0.json"
+model_in_use_bulk_bull = f"M30_50_0.0003_2_bull_bulk_9.0.json"
+model_in_use_bulk_bear = f"M30_50_0.0003_2_bear_bulk_9.0.json"

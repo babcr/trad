@@ -261,9 +261,9 @@ def apply_model(model,element):
     return preds
 
 def get_pred(bull_pred, bear_pred, scale, keyword):
-    if   bull_pred > dashboard[f'bull_binary_{scale}_{keyword}'] and bear_pred < dashboard[f'bear_binary_{scale}_{keyword}']:
+    if   bull_pred > dashboard[f'bull_binary_{scale}_{keyword}'] and bear_pred <= dashboard[f'bear_binary_{scale}_{keyword}']:
         pred = 2
-    elif bear_pred > dashboard[f'bear_binary_{scale}_{keyword}'] and bull_pred < dashboard[f'bull_binary_{scale}_{keyword}']:
+    elif bear_pred > dashboard[f'bear_binary_{scale}_{keyword}'] and bull_pred <= dashboard[f'bull_binary_{scale}_{keyword}']:
         pred = 0
     else:
         pred = 1
@@ -286,7 +286,7 @@ def check_pending_orders(symbol):
     else:
         return False
 
-def check_open_positions_or_pending_orders(symbol):
+def check_open_positions(symbol):
     # Connexion à MetaTrader 5
     init_metatrader_connexion()
 
@@ -295,19 +295,19 @@ def check_open_positions_or_pending_orders(symbol):
     has_open_positions = open_positions is not None and len(open_positions) > 0
 
     # Vérification des ordres en attente pour le symbole donné
-    pending_orders = mt5.orders_get(symbol=symbol)
-    has_pending_orders = pending_orders is not None and len(pending_orders) > 0
+    #pending_orders = mt5.orders_get(symbol=symbol)
+    #has_pending_orders = pending_orders is not None and len(pending_orders) > 0
 
     # Déconnexion de MetaTrader 5
     close_metatrader_connexion()
 
     # Résultats
-    if has_open_positions and has_pending_orders:
+    #if has_open_positions and has_pending_orders:
+        #return True
+    if has_open_positions:
         return True
-    elif has_open_positions:
-        return True
-    elif has_pending_orders:
-        return True
+    #elif has_pending_orders:
+    #    return True
     else:
         return False
 
@@ -337,8 +337,8 @@ def cancel_unfilled_orders(symbol):
 
         # Loop through orders and cancel those that are pending (not filled)
         for order in orders:
-            if order.type in (mt5.ORDER_BUY_LIMIT, mt5.ORDER_SELL_LIMIT,
-                              mt5.ORDER_BUY_STOP, mt5.ORDER_SELL_STOP):
+            if order.type in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_SELL_LIMIT,
+                              mt5.ORDER_TYPE_BUY_STOP, mt5.ORDER_TYPE_SELL_STOP):
                 # Cancel the order
                 cancel_request = {
                     "action": mt5.TRADE_ACTION_REMOVE,
@@ -462,9 +462,9 @@ def loop():
         pred_bulk_ = get_pred(pred_bull_bulk, pred_bear_bulk, 'bulk', 'comb')
 
         pred = None
-        if      (pred_short == 2 and (pred_narrow == 2 or pred_bulk == 2)) or (pred_inter == 2 and (pred_narrow == 2 or pred_bulk == 2)):
+        if      pred_short == 2 and (pred_narrow == 2 or pred_bulk == 2 or pred_inter == 2):
             pred = 2
-        elif    (pred_short == 0 and (pred_narrow == 0 or pred_bulk == 0)) or (pred_inter == 0 and (pred_narrow == 0 or pred_bulk == 0)) :
+        elif    pred_short == 0 :
             pred = 0
         else:
             pred = 1
@@ -472,26 +472,24 @@ def loop():
         pred_ = None
         if      pred_narrow_ == 2 and pred_short_ == 2 and pred_inter_ == 2 and pred_bulk_ == 2:
             pred_ = 2
-        elif    pred_narrow_ == 0 and pred_short_ == 0 and pred_inter_ == 0 and pred_bulk_ == 0:
+        elif    pred_short_ == 0 and pred_bulk_ == 0:
             pred_ = 0
         else:
             pred_ = 1
 
         print(f"{pseudos[x][:6]} {str(pred_bulk)+str(pred_narrow)+str(pred_inter)+str(pred_short)+str(pred_)} : {scores[pseudos[x]][-1]}")
 
+
         if pseudos[x] not in last_orders:
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        if pred == 2 or pred_ == 2:
+        if check_pending_orders(pseudos[x]):
+            if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
+                cancel_unfilled_orders(pseudos[x])
 
-            if check_open_positions_or_pending_orders(pseudos[x]):
-                if check_pending_orders(pseudos[x]):
-                    if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
-                        cancel_unfilled_orders(pseudos[x])
-                    else:
-                        continue
-                else:
-                    if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
+        if pred == 2 or pred_ == 2:
+            if check_open_positions(pseudos[x]):
+                if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
                         continue
             if correlated(pseudos[x], ele):
                 continue
@@ -506,15 +504,9 @@ def loop():
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         elif pred == 0 or pred_ == 0:
-            if check_open_positions_or_pending_orders(pseudos[x]):
-                if check_pending_orders(pseudos[x]):
-                    if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
-                        cancel_unfilled_orders(pseudos[x])
-                    else:
-                        continue
-                else:
-                    if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                        continue
+            if check_open_positions(pseudos[x]):
+                if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
+                    continue
             if correlated(pseudos[x], ele):
                 continue
             so(
