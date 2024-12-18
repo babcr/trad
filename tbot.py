@@ -521,7 +521,7 @@ def loop():
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         else:
             pass
-    iteration_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    iteration_time = datetime.now()
     sleep(60)
     print(f"======================================================================")
 
