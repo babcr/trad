@@ -463,7 +463,7 @@ def loop():
         pred = None
         if      pred_short == 2 and (pred_narrow == 2 or pred_bulk == 2 or pred_inter == 2):
             pred = 2
-        elif    pred_short == 0 and (pred_narrow < 2 and pred_bulk < 2 and pred_inter < 2) :
+        elif    pred_short == 0  and (pred_narrow < 2 and pred_bulk < 2 and pred_inter < 2):
             pred = 0
         else:
             pred = 1
@@ -471,7 +471,7 @@ def loop():
         pred_ = None
         if      pred_narrow_ == 2 and pred_short_ == 2 and pred_inter_ == 2 and pred_bulk_ == 2:
             pred_ = 2
-        elif    pred_short_ == 0 and pred_bulk_ == 0 and pred_narrow < 2 and pred_inter < 2:
+        elif    pred_short_ == 0 and pred_bulk_ == 0 and  pred_narrow_ < 2 and pred_inter_ < 2:
             pred_ = 0
         else:
             pred_ = 1
@@ -485,6 +485,8 @@ def loop():
         if check_pending_orders(pseudos[x]):
             if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
                 cancel_unfilled_orders(pseudos[x])
+            else:
+                continue
 
         if pred == 2 or pred_ == 2:
             if check_open_positions(pseudos[x]):

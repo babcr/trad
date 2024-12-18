@@ -34,7 +34,6 @@ dashboard = {
     'bull_binary_narrow_threshold': 0.5864701454549608, # 0.00974751 # 69.47593583 %
     'bull_binary_inter_threshold' : 0.6280010588498754, # 0.00980859 # 79.26453396 %
     'bull_binary_short_threshold' : 0.620681288104058, # 0.00989771 # 81.89573460 %
-    
 
     'bear_binary_wide_threshold'  : 0.55,   # 0.0
     'bear_binary_bulk_threshold'  : 0.46361611197629554, # 0.00152330 9.31232092 %
@@ -42,17 +41,17 @@ dashboard = {
     'bear_binary_inter_threshold' : 0.55, # 0.0
     'bear_binary_short_threshold' : 0.5344367984097811, # 0.00024184 # 79.51807229 %
 
-    'bull_binary_wide_comb'  : 0.5407327412049496, # 0.28782925 # 49.85199972 %
-    'bull_binary_bulk_comb'  : 0.5397546289055891, # 0.29000148 # 53.39773712 %
-    'bull_binary_narrow_comb': 0.5327630640664752, # 0.29240872 # 54.61452347 %
-    'bull_binary_inter_comb' : 0.5258460046011125, # 0.29425151 # 54.42174702 %
-    'bull_binary_short_comb' : 0.5149197581887424, # 0.29690935 # 53.64622282 %
+    'bull_binary_wide_comb'  : 0.5410273671465529, # 0.00959177 # 4.30919591 %
+    'bull_binary_bulk_comb'  : 0.54151254900918, # 0.24166773 # 53.87084527 %
+    'bull_binary_narrow_comb': 0.5362989911091635, # 0.24367532 # 55.73975990 %
+    'bull_binary_inter_comb' : 0.5304831858679859, # 0.24520855 # 55.52740212 %
+    'bull_binary_short_comb' : 0.5186238887400172, # 0.24742602 # 54.49171929 %
 
     'bear_binary_wide_comb'  : 0.55,   # 0.0
     'bear_binary_bulk_comb'  : 0.46361611197629554, # 0.00152330 # 9.31232092 %
     'bear_binary_narrow_comb': 0.55, # 0.0
     'bear_binary_inter_comb' : 0.55, # 0.0
-    'bear_binary_short_comb' : 0.5307867692232212, # 0.00045136 # 60.96997691 %  
+    'bear_binary_short_comb' : 0.5307867692232212, # 0.00045136 # 60.96997691 %
 }
 
 data_generator_categorizing_threshold = 1.5
@@ -201,6 +200,7 @@ order_types = {
     'sell_stop': mt5.ORDER_TYPE_SELL_STOP
 }
 
+order_suffix = ''
 trading_styles = ['intraday', 'swing']
 
 buy_orders  = ['buy', 'buy_limit', 'buy_now','buy_wide']
@@ -212,9 +212,6 @@ period=24 * prediction_period
 
 testnum=25
 
-
-
-learning_rate_1 = 0.001
 learning_rate = 0.0001
 # act_threshold15_50_1.5_0.001.json
 model_in_use_wide_bull = f"M30_50_0.0003_2_bull_wide_25.0.json"

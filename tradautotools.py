@@ -1,5 +1,5 @@
 from random import randint
-from tradparams import deviation, max_spread, limit_spread, spreads, volatiles, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
+from tradparams import order_suffix, deviation, max_spread, limit_spread, spreads, volatiles, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
 from math import ceil, floor
 from statistics import mean
 from os import path, remove
@@ -338,7 +338,7 @@ def get_attributes(
     bid, ask = get_prices(symbol)
     spread = (ask - bid) / loss_variance
     if spread > limit_spread:
-        ordertype = ordertype.replace('market', 'now')
+        ordertype = ordertype.replace('_market', order_suffix)
 
     if spread > max_spread:
         raise SpreadTooHighException(spread)
