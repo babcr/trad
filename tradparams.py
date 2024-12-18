@@ -30,10 +30,10 @@ dashboard = {
     'base_currency'             : 'EUR',
 
     'bull_binary_wide_threshold'  : 0.5410273671465529, #  0.00959177 # 51.05457708 %
-    'bull_binary_narrow_threshold': 0.6066448386920055, # 0.00097475 # 171.03174603 %
-    'bull_binary_short_threshold' : 0.6147522934837489, # 0.00125194 # 696.26865672 %
-    'bull_binary_inter_threshold' : 0.6723362966039078, # 0.00180973 # 445.35315985 %
-    'bull_binary_bulk_threshold'  : 0.5674194557332408, # 0.00096757 # 35.53299492 %
+    'bull_binary_bulk_threshold'  : 0.5601240442207156, # 0.00966633 # 58.28928918 %
+    'bull_binary_narrow_threshold': 0.5864701454549608, # 0.00974751 # 69.47593583 %
+    'bull_binary_inter_threshold' : 0.6280010588498754, # 0.00980859 # 79.26453396 %
+    'bull_binary_short_threshold' : 0.620681288104058, # 0.00989771 # 81.89573460 %
 
     'bear_binary_wide_threshold'  : 0.55,   # 0.0
     'bear_binary_bulk_threshold'  : 0.46361611197629554, # 0.00152330 9.31232092 %
@@ -41,18 +41,17 @@ dashboard = {
     'bear_binary_inter_threshold' : 0.55, # 0.0
     'bear_binary_short_threshold' : 0.5344367984097811, # 0.00024184 # 79.51807229 %
 
-
     'bull_binary_wide_comb'  : 0.5410273671465529, # 0.00959177 # 4.30919591 %
-    'bull_binary_bulk_comb'  : 0.538786590245818, # 0.31900361 # 53.10746281 %
-    'bull_binary_narrow_comb': 0.5308940411420445, # 0.32165022 # 54.09988559 %
-    'bull_binary_inter_comb' : 0.5234007839186757, # 0.32367729 # 53.86178665 %
-    'bull_binary_short_comb' : 0.5129320037582746, # 0.32660352 # 53.28599014 %
-    
+    'bull_binary_bulk_comb'  : 0.54151254900918, # 0.24166773 # 53.87084527 %
+    'bull_binary_narrow_comb': 0.5362989911091635, # 0.24367532 # 55.73975990 %
+    'bull_binary_inter_comb' : 0.5304831858679859, # 0.24520855 # 55.52740212 %
+    'bull_binary_short_comb' : 0.5186238887400172, # 0.24742602 # 54.49171929 %
+
     'bear_binary_wide_comb'  : 0.55,   # 0.0
     'bear_binary_bulk_comb'  : 0.46361611197629554, # 0.00152330 # 9.31232092 %
     'bear_binary_narrow_comb': 0.55, # 0.0
     'bear_binary_inter_comb' : 0.55, # 0.0
-    'bear_binary_short_comb' : 0.5307867692232212, # 0.00045136 # 60.96997691 %  
+    'bear_binary_short_comb' : 0.5307867692232212, # 0.00045136 # 60.96997691 %
 }
 
 data_generator_categorizing_threshold = 1.5
@@ -201,6 +200,7 @@ order_types = {
     'sell_stop': mt5.ORDER_TYPE_SELL_STOP
 }
 
+order_suffix = ''
 trading_styles = ['intraday', 'swing']
 
 buy_orders  = ['buy', 'buy_limit', 'buy_now','buy_wide']
@@ -212,9 +212,6 @@ period=24 * prediction_period
 
 testnum=25
 
-
-
-learning_rate_1 = 0.001
 learning_rate = 0.0001
 # act_threshold15_50_1.5_0.001.json
 model_in_use_wide_bull = f"M30_50_0.0003_2_bull_wide_25.0.json"
