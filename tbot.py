@@ -33,6 +33,8 @@ model_bull_inter =  None
 model_bear_inter =  None
 model_bull_bulk =  None
 model_bear_bulk =  None
+iteration_time = datetime.now()
+correlations = []
 
 
 def calculate_candlestick_score_realtime(symbol, last_candle, meanperiod=mperiod, new=True):
@@ -420,9 +422,6 @@ def correlated(symbol, ele):
                 return True
     return False
 
-iteration_time = datetime.now()
-correlations = []
-
 def loop():
     global iteration_time
     if datetime.now() - iteration_time > timedelta(hours=1):
@@ -464,7 +463,7 @@ def loop():
         pred = None
         if      pred_short == 2 and (pred_narrow == 2 or pred_bulk == 2 or pred_inter == 2):
             pred = 2
-        elif    pred_short == 0 :
+        elif    pred_short == 0 and (pred_narrow < 2 and pred_bulk < 2 and pred_inter < 2) :
             pred = 0
         else:
             pred = 1
@@ -472,7 +471,7 @@ def loop():
         pred_ = None
         if      pred_narrow_ == 2 and pred_short_ == 2 and pred_inter_ == 2 and pred_bulk_ == 2:
             pred_ = 2
-        elif    pred_short_ == 0 and pred_bulk_ == 0:
+        elif    pred_short_ == 0 and pred_bulk_ == 0 and pred_narrow < 2 and pred_inter < 2:
             pred_ = 0
         else:
             pred_ = 1
@@ -490,7 +489,7 @@ def loop():
         if pred == 2 or pred_ == 2:
             if check_open_positions(pseudos[x]):
                 if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                        continue
+                    continue
             if correlated(pseudos[x], ele):
                 continue
             so(
@@ -520,7 +519,7 @@ def loop():
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         else:
             pass
-    iteration_time = datetime.now()
+    iteration_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     sleep(60)
     print(f"======================================================================")
 

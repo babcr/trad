@@ -30,10 +30,11 @@ dashboard = {
     'base_currency'             : 'EUR',
 
     'bull_binary_wide_threshold'  : 0.5410273671465529, #  0.00959177 # 51.05457708 %
-    'bull_binary_narrow_threshold': 0.6066448386920055, # 0.00097475 # 171.03174603 %
-    'bull_binary_short_threshold' : 0.6147522934837489, # 0.00125194 # 696.26865672 %
-    'bull_binary_inter_threshold' : 0.6723362966039078, # 0.00180973 # 445.35315985 %
-    'bull_binary_bulk_threshold'  : 0.5674194557332408, # 0.00096757 # 35.53299492 %
+    'bull_binary_bulk_threshold'  : 0.5601240442207156, # 0.00966633 # 58.28928918 %
+    'bull_binary_narrow_threshold': 0.5864701454549608, # 0.00974751 # 69.47593583 %
+    'bull_binary_inter_threshold' : 0.6280010588498754, # 0.00980859 # 79.26453396 %
+    'bull_binary_short_threshold' : 0.620681288104058, # 0.00989771 # 81.89573460 %
+    
 
     'bear_binary_wide_threshold'  : 0.55,   # 0.0
     'bear_binary_bulk_threshold'  : 0.46361611197629554, # 0.00152330 9.31232092 %
@@ -41,13 +42,12 @@ dashboard = {
     'bear_binary_inter_threshold' : 0.55, # 0.0
     'bear_binary_short_threshold' : 0.5344367984097811, # 0.00024184 # 79.51807229 %
 
+    'bull_binary_wide_comb'  : 0.5407327412049496, # 0.28782925 # 49.85199972 %
+    'bull_binary_bulk_comb'  : 0.5397546289055891, # 0.29000148 # 53.39773712 %
+    'bull_binary_narrow_comb': 0.5327630640664752, # 0.29240872 # 54.61452347 %
+    'bull_binary_inter_comb' : 0.5258460046011125, # 0.29425151 # 54.42174702 %
+    'bull_binary_short_comb' : 0.5149197581887424, # 0.29690935 # 53.64622282 %
 
-    'bull_binary_wide_comb'  : 0.5410273671465529, # 0.00959177 # 4.30919591 %
-    'bull_binary_bulk_comb'  : 0.538786590245818, # 0.31900361 # 53.10746281 %
-    'bull_binary_narrow_comb': 0.5308940411420445, # 0.32165022 # 54.09988559 %
-    'bull_binary_inter_comb' : 0.5234007839186757, # 0.32367729 # 53.86178665 %
-    'bull_binary_short_comb' : 0.5129320037582746, # 0.32660352 # 53.28599014 %
-    
     'bear_binary_wide_comb'  : 0.55,   # 0.0
     'bear_binary_bulk_comb'  : 0.46361611197629554, # 0.00152330 # 9.31232092 %
     'bear_binary_narrow_comb': 0.55, # 0.0
