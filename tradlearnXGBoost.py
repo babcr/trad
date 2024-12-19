@@ -16,7 +16,7 @@ import argparse
 from scipy.sparse import csr_matrix
 import xgboost as xgb
 from collections import deque
-from tradparams import initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, certitude_degree_of_categorization, testnum, period, folder, mode
+from tradparams import initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, testnum, period, folder, mode
 
 
 def xdump(model,filepath):
@@ -32,7 +32,6 @@ def xload(filepath):
 num_features = period - testnum + 1
 batch_size = 32  # À ajuster selon les performances de votre machine
 test_split_ratio = 0.2
-cert_deg = certitude_degree_of_categorization
 epsilon = 0.001
 last_epsilon = 0.000001
 

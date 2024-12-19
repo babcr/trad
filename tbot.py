@@ -471,7 +471,7 @@ def loop():
         pred_ = None
         if      pred_narrow_ == 2 and pred_short_ == 2 and pred_inter_ == 2 and pred_bulk_ == 2:
             pred_ = 2
-        elif    pred_short_ == 0 and pred_bulk_ == 0 and  pred_narrow_ < 2 and pred_inter_ < 2:
+        elif    pred_short_ == 0 and pred_bulk_ == 0 and pred_narrow_ < 2 and pred_inter_ < 2:
             pred_ = 0
         else:
             pred_ = 1
