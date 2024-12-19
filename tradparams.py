@@ -23,7 +23,7 @@ dashboard = {
     'medium_high_offset_ratio'  : 0.05,
     'max_offset_ratio'          : 0.1,
     'stop_offset_ratio'         : 0.025,
-    'loss_shrink_ratio'         : 0.1,
+    'loss_shrink_ratio'         : 0.13,
     'simple_to_volatile_ratio'  : 4,
     'defaultTradingMode'        : 'swing',
     'defaultDeltaTimeframePair' : 'h',
@@ -224,3 +224,6 @@ model_in_use_inter_bull = f"M30_50_0.0003_2_bull_inter_3.0.json"
 model_in_use_inter_bear = f"M30_50_0.0003_2_bear_inter_3.0.json"
 model_in_use_bulk_bull = f"M30_50_0.0003_2_bull_bulk_9.0.json"
 model_in_use_bulk_bear = f"M30_50_0.0003_2_bear_bulk_9.0.json"
+
+# [91841] train-logloss:0.64667   eval-logloss:0.68570  M30_50_0.00005_2_bear_inter_3.0.json 1 205 704
+
