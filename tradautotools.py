@@ -1,5 +1,5 @@
 from random import randint
-from tradparams import order_suffix, deviation, max_spread, limit_spread, spreads, volatiles, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
+from tradparams import granularity_factor, order_suffix, deviation, max_spread, limit_spread, spreads, volatiles, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
 from math import ceil, floor
 from statistics import mean
 from os import path, remove
@@ -290,7 +290,7 @@ def get_attributes(
     max_candle_size, avg_candle_size = candle_size(symbol, delta_timeframe_pair)
 
     if mode=='swing':
-        loss_variance = ceil(max_candle_size / avg_candle_size) * avg_candle_size * dashboard['loss_shrink_ratio']
+        loss_variance = ceil(granularity_factor * max_candle_size / avg_candle_size) * avg_candle_size * dashboard['loss_shrink_ratio'] / granularity_factor
         #if symbol not in volatiles:
         #    loss_variance = loss_variance / 3.0
     elif mode=='intraday':
