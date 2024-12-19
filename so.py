@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import tradautotools as ta
 from tradautotools import SpreadTooHighException, RiskTooHighException
+from tradautotools import get_attributes, send_order, candle_size, get_equity, get_prices, get_contract_size, symbol_converter
+from tradautotools import delta_timeframe_pair_pseudos, dashboard, orders_list, symbols_list
 import argparse
 
 
@@ -14,33 +15,30 @@ def main(
         ordertype  ,
         volume     ,
         price      ,
-        mode       ,
         delta_timeframe_pair
     ):
 
     try:
-
-        order_type, vol, p, sl, tp, expiration_date, typefilling, type_time = ta.get_attributes(
+        order_type, vol, p, sl, tp, typefilling = get_attributes(
             symbol     ,
             ordertype  ,
             volume     ,
             price      ,
-            mode       ,
             delta_timeframe_pair
         )
-        print(f"Account Expendable Equity = {ta.get_equity()}")
+        print(f"Account Expendable Equity = {get_equity()}")
 
-        ta.send_order(symbol=symbol, order_type=order_type, volume=vol, price=p, stoploss=sl, takeprofit=tp, typefilling=typefilling,expiration=expiration_date, typetime=type_time )
+        send_order(symbol=symbol, order_type=order_type, volume=vol, price=p, stoploss=sl, takeprofit=tp, typefilling=typefilling)
 
         print(f"\nAttributes = ({order_type}, {vol}, {p}, {sl}, {tp})")
 
-        print(f"Symbol {symbol} ( max, average ) candle sizes : {ta.candle_size(symbol, delta_timeframe_pair)}")
+        print(f"Symbol {symbol} ( max, average ) candle sizes : {candle_size(symbol, delta_timeframe_pair)}")
 
-        # print(f"Symbol {symbol} conversion factor (conversion pair is {ta.get_conv_pair(symbol)}): {ta.get_conversion_factor(symbol)}")
+        # print(f"Symbol {symbol} conversion factor (conversion pair is {get_conv_pair(symbol)}): {get_conversion_factor(symbol)}")
 
-        print(f"Symbol {symbol} lot size is {ta.get_contract_size(symbol)}")
+        print(f"Symbol {symbol} lot size is {get_contract_size(symbol)}")
 
-        print(f"Symbol {symbol} prices are ( bid, ask ) = {ta.get_prices(symbol)}")
+        print(f"Symbol {symbol} prices are ( bid, ask ) = {get_prices(symbol)}")
     except RiskTooHighException as rth:
         print(rth.message)
     except SpreadTooHighException as sth:
@@ -57,14 +55,14 @@ if __name__ == '__main__':
         "--symbol",
         help="the symbol you need to place the trade on",
         default=r'',
-        choices = ta.tparams.symbols_list,
+        choices = symbols_list,
         required=True
     )
     parser.add_argument(
         "-o"    ,
         "--ordertype"  ,
         help="The order type you need to place",
-        choices = ta.tparams.orders_list,
+        choices = orders_list,
         default=None,
         type=str,
         required=True
@@ -88,31 +86,21 @@ if __name__ == '__main__':
     )
 
     parser.add_argument(
-        "-m",
-        "--mode",
-        help="The trading style you want to adopt",
-        default=ta.tparams.dashboard['defaultTradingMode'],
-        type=str,
-        choices = ta.tparams.trading_styles
-    )
-
-    parser.add_argument(
         "-d",
         "--deltatimeframepair",
         help="Pair containing the period in with candle sticks statistics are calculated in hours and timeframe of the candle sticks",
-        default=ta.tparams.dashboard['defaultDeltaTimeframePair'],
+        default = dashboard['defaultDeltaTimeframePair'],
         type=str,
-        choices = ta.tparams.delta_timeframe_pair_pseudos
+        choices = delta_timeframe_pair_pseudos
     )
 
 
     args = parser.parse_args()
 
     main(
-        symbol      =   ta.tparams.symbol_converter(args.symbol),
+        symbol      =   symbol_converter(args.symbol),
         ordertype   =   args.ordertype,
         volume      =   args.volume,
         price       =   args.price,
-        mode        =   args.mode,
-        delta_timeframe_pair = ta.tparams.delta_timeframe_pair_pseudos[args.deltatimeframepair]
+        delta_timeframe_pair = delta_timeframe_pair_pseudos[args.deltatimeframepair]
     )

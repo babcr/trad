@@ -1,7 +1,7 @@
 from random import randint
-from tradparams import granularity_factor, order_suffix, deviation, max_spread, limit_spread, spreads, volatiles, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
+from tradparams import granularity_factor, order_suffix, deviation, max_spread, limit_spread, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
+from tradparams import delta_timeframe_pair_pseudos, orders_list, symbols_list, symbol_converter
 from math import ceil, floor
-from statistics import mean
 from os import path, remove
 from datetime import datetime, timedelta
 
@@ -62,9 +62,7 @@ def send_order(
     price=None,
     stoploss=None,
     takeprofit=None,
-    typefilling=mt5.ORDER_FILLING_FOK,
-    expiration=None,
-    typetime=mt5.ORDER_TIME_SPECIFIED
+    typefilling=mt5.ORDER_FILLING_FOK
 ):
     """
     Envoie un ordre au marché via MetaTrader 5.
@@ -94,7 +92,6 @@ def send_order(
         "tp": takeprofit,
         "deviation": deviation,  # Tolérance en points pour le slippage
         "type_time": mt5.ORDER_TIME_GTC,  # 'Good till cancelled'
-        #"expiration": expiration,
         "type_filling": typefilling, # mt5.ORDER_FILLING_FOK,  # 'Fill or kill'
         "magic": randint(1, 10000000000),  # Identifiant unique de l'ordre
         "comment": f"{order_type} order"
@@ -135,13 +132,14 @@ def get_prices(symbol):
             print("Failed to retrieve tick data.")
     close_metatrader_connexion()
 
-def get_equity():
+def get_equity(equitylimit=dashboard['equity_limit_ratio']):
     init_metatrader_connexion()
     # Retrieve account information
     account_info = mt5.account_info()
+    equity=None
     if account_info is not None:
         # Access the equity attribute
-        equity = account_info.equity * dashboard['equity_limit_ratio']
+        equity = account_info.equity * equitylimit
     else:
         print("Failed to retrieve account information")
         close_metatrader_connexion()
@@ -177,6 +175,7 @@ def candle_size(symbol, delta_timeframe_pair):
 
     return max_size, average_size
 
+'''
 def get_conv_pair(symbol, base=dashboard['base_currency']):
     pair = None
     if base=='EUR':
@@ -187,7 +186,7 @@ def get_conv_pair(symbol, base=dashboard['base_currency']):
 
 def get_conversion_factor(symbol, base=dashboard['base_currency']):
     return get_prices(get_conv_pair(symbol, base))[0]
-
+'''
 
 def get_minimal_lot_size(symbol):
     # Initialize MetaTrader5
@@ -256,6 +255,7 @@ def get_loss(risk, equity=get_equity()):
     loss = equity * risk / 100.0
     return loss
 
+
 def get_risk_value_and_lot_size(symbol, loss_variance, contract_size, conversion_price, equity=get_equity(), risk_level=dashboard['risk_level'],accepted_risk_overrun=dashboard['accepted_risk_overrun']):
     desired_lot_size = get_minimal_lot_size(symbol)
     volume_step = get_volume_step(symbol)
@@ -279,59 +279,29 @@ def get_risk_value_and_lot_size(symbol, loss_variance, contract_size, conversion
     return risk, desired_lot_size
 
 
+def get_loss_var(symbol, delta_timeframe_pair, granularity_fact=granularity_factor, timescale=dashboard['defaultTradingMode'], loss_shrink=dashboard['loss_shrink_ratio'], offset_shrink=dashboard['offset_shrink_ratio'], loss_to_win=dashboard['win_loss_quotient']):
+    max_candle_size, avg_candle_size = candle_size(symbol, delta_timeframe_pair)
+
+    if timescale=='swing':
+        loss_var = ceil(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * loss_shrink / granularity_fact
+        offset =  ceil(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * offset_shrink / granularity_fact
+    elif timescale=='intraday':
+        loss_var = floor(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * loss_shrink / granularity_fact
+        offset =  floor(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * offset_shrink / granularity_fact
+    else:
+        raise UnknownModeException(timescale)
+    return loss_var, loss_to_win * loss_var , offset
+
 def get_attributes(
     symbol     ,
     ordertype  ,
     volume     ,
     price      ,
-    mode       ,
     delta_timeframe_pair
 ):
-    max_candle_size, avg_candle_size = candle_size(symbol, delta_timeframe_pair)
-
-    if mode=='swing':
-        loss_variance = ceil(granularity_factor * max_candle_size / avg_candle_size) * avg_candle_size * dashboard['loss_shrink_ratio'] / granularity_factor
-        #if symbol not in volatiles:
-        #    loss_variance = loss_variance / 3.0
-    elif mode=='intraday':
-        loss_variance = floor(max_candle_size / avg_candle_size) * avg_candle_size * dashboard['loss_shrink_ratio']
-        #if symbol not in volatiles:
-        #    loss_variance = loss_variance / 2.0
-
-    else:
-        raise UnknownModeException(mode)
+    loss_variance, win_variance, offset = get_loss_var(symbol, delta_timeframe_pair)
 
     print(f"loss_variance = {loss_variance}")
-
-    win_variance = dashboard['win_loss_quotient'] * loss_variance
-
-    if ordertype in ['buy_now','sell_now']:
-        if symbol in volatiles:
-            offset = avg_candle_size * dashboard['min_offset_ratio']
-        else:
-            offset = avg_candle_size * dashboard['min_offset_ratio']
-    elif ordertype in ['buy','sell']:
-        if symbol in volatiles:
-            offset = avg_candle_size * dashboard['medium_low_offset_ratio']
-        else:
-            offset = avg_candle_size * dashboard['medium_low_offset_ratio']
-    elif ordertype in ['buy_limit','sell_limit']:
-        if symbol in volatiles:
-            offset = avg_candle_size * dashboard['medium_high_offset_ratio']
-        else:
-            offset = avg_candle_size * dashboard['medium_high_offset_ratio']
-    elif ordertype in ['buy_wide','sell_wide']:
-        if symbol in volatiles:
-            offset = avg_candle_size * dashboard['max_offset_ratio']
-        else:
-            offset = avg_candle_size * dashboard['max_offset_ratio']
-    elif ordertype in ['buy_stop','sell_stop']:
-        if symbol in volatiles:
-            offset = avg_candle_size * dashboard['stop_offset_ratio']
-        else:
-            offset = avg_candle_size * dashboard['stop_offset_ratio']
-    else:
-        offset = 0
 
     print(f"offset = {offset}")
 
@@ -343,12 +313,6 @@ def get_attributes(
     if spread > max_spread:
         raise SpreadTooHighException(spread)
 
-    print(f"Spread = {spread}")
-    spreads.append(spread)
-    meanspread = mean(spreads)
-    maxspread = max(spreads)
-    print(f"Mean Spread = {meanspread}")
-    print(f"Max Spread = {maxspread}")
     order_type = None
     if ordertype in buy_orders:
         market_price = bid
@@ -400,12 +364,11 @@ def get_attributes(
 
     contract_size = get_contract_size(symbol)
 
+    risk = None
+    calc_volume = None
     if not volume:
         risk, calc_volume = get_risk_value_and_lot_size(symbol, loss_variance, contract_size, loss_price)
 
-
     print(f"risk = {risk} %")
-    expiration_date = datetime.now() + timedelta(minutes=30)
-    typetime = mt5.ORDER_TIME_SPECIFIED
 
-    return order_type, calc_volume, price, loss_price, win_price, expiration_date, typefilling, typetime
+    return order_type, calc_volume, price, loss_price, win_price, typefilling
