@@ -10,6 +10,7 @@ Makefile.in
 .dirstamp
 *.csv
 M*.json
+__pycache__
 
 
 # http://www.gnu.org/software/autoconf

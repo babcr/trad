@@ -13,7 +13,7 @@ def to_float(val):
     return np.float16(val)
 
 dashboard = {
-    'win_loss_quotient'         : 4.15,
+    'win_loss_quotient'         : 2.15,
     'equity_limit_ratio'        : 1.0,
     'goal'                      : 300,
     'risk_level'                : 6.0,
@@ -36,10 +36,10 @@ dashboard = {
     'bull_binary_short_threshold' : 0.620681288104058, # 0.00989771 # 81.89573460 %
 
     'bear_binary_wide_threshold'  : 0.55,   # 0.0
-    'bear_binary_bulk_threshold'  : 0.46361611197629554, # 0.00152330 9.31232092 %
+    'bear_binary_bulk_threshold'  : 0.45818963200061946, # 0.00304660 51.64271047 %
     'bear_binary_narrow_threshold': 0.55, # 0.007196824955709174
     'bear_binary_inter_threshold' : 0.55, # 0.0
-    'bear_binary_short_threshold' : 0.5344367984097811, # 0.00024184 # 79.51807229 %
+    'bear_binary_short_threshold' : 0.5197649159773097, # 0.00361196 # 54.68975469 %
 
     'bull_binary_wide_comb'  : 0.5410273671465529, # 0.00959177 # 4.30919591 %
     'bull_binary_bulk_comb'  : 0.54151254900918, # 0.24166773 # 53.87084527 %
@@ -48,10 +48,10 @@ dashboard = {
     'bull_binary_short_comb' : 0.5186238887400172, # 0.24742602 # 54.49171929 %
 
     'bear_binary_wide_comb'  : 0.55,   # 0.0
-    'bear_binary_bulk_comb'  : 0.46361611197629554, # 0.00152330 # 9.31232092 %
+    'bear_binary_bulk_comb'  : 0.45818963200061946, # 0.00304660 51.64271047 %
     'bear_binary_narrow_comb': 0.55, # 0.0
     'bear_binary_inter_comb' : 0.55, # 0.0
-    'bear_binary_short_comb' : 0.5307867692232212, # 0.00045136 # 60.96997691 %
+    'bear_binary_short_comb' : 0.5142886711656096, # 0.00902938 # 53.80974371 %
 }
 
 data_generator_categorizing_threshold = 1.5
