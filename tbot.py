@@ -499,7 +499,6 @@ def loop():
                 ordertype   =   order_types_[0],
                 volume      =   None,
                 price       =   None,
-                mode        =   dashboard['defaultTradingMode'],
                 delta_timeframe_pair = delta_timeframe_pair_pseudos['h']
             )
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -515,7 +514,6 @@ def loop():
                 ordertype   =   order_types_[1],
                 volume      =   None,
                 price       =   None,
-                mode        =   dashboard['defaultTradingMode'],
                 delta_timeframe_pair = delta_timeframe_pair_pseudos['h']
             )
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

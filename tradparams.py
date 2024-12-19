@@ -24,7 +24,7 @@ max_spread = 0.1
 limit_correlation = 0.3
 
 loss_shrink_ratio = 0.2
-offset_shrink_ratio = 0.05
+offset_shrink_ratio = 0.001
 granularity_factor = 10
 defaultTradingMode = 'swing'
 
@@ -35,54 +35,60 @@ mean_period = 50
 
 dashboard = {
     # Risk management
-    'win_loss_quotient'         : win_loss_quotient,
-    'equity_limit_ratio'        : equity_limit_ratio,
-    'goal'                      : goal,
-    'risk_level'                : risk_level,
-    'accepted_risk_overrun'     : accepted_risk_overrun,
-    'limit_correlation'         : limit_correlation,
-    'limit_spread'              : limit_spread,
-    'max_spread'                : max_spread,
+    'win_loss_quotient'             : win_loss_quotient,
+    'equity_limit_ratio'            : equity_limit_ratio,
+    'goal'                          : goal,
+    'risk_level'                    : risk_level,
+    'accepted_risk_overrun'         : accepted_risk_overrun,
+    'limit_correlation'             : limit_correlation,
+    'limit_spread'                  : limit_spread,
+    'max_spread'                    : max_spread,
 
     # Volatility management
-    'loss_shrink_ratio'         : loss_shrink_ratio,
-    'offset_shrink_ratio'       : offset_shrink_ratio,
-    'granularity_factor'        : granularity_factor,
-    'defaultTradingMode'        : defaultTradingMode,
+    'loss_shrink_ratio'             : loss_shrink_ratio,
+    'offset_shrink_ratio'           : offset_shrink_ratio,
+    'granularity_factor'            : granularity_factor,
+    'defaultTradingMode'            : defaultTradingMode,
 
     # Base parameters
-    'defaultDeltaTimeframePair' : 'h',
-    'base_currency'             : 'EUR',
+    'defaultDeltaTimeframePair'     : 'h',
+    'base_currency'                 : 'EUR',
 
-    'unfilled_order_lifespan_min' : unfilled_order_lifespan_min,
-    'prediction_period'         : prediction_period, # in days
-    'hours_before_repeat_order' : hours_before_repeat_order,
-    'mean_period'               : mean_period,
+    'unfilled_order_lifespan_min'   : unfilled_order_lifespan_min,
+    'prediction_period'             : prediction_period, # in days
+    'hours_before_repeat_order'     : hours_before_repeat_order,
+    'mean_period'                   : mean_period,
 
     # Models parameters
-    'bull_binary_wide_threshold'  : 0.5410273671465529, #  0.00959177 # 51.05457708 %
-    'bull_binary_bulk_threshold'  : 0.5601240442207156, # 0.00966633 # 58.28928918 %
-    'bull_binary_narrow_threshold': 0.5864701454549608, # 0.00974751 # 69.47593583 %
-    'bull_binary_inter_threshold' : 0.6280010588498754, # 0.00980859 # 79.26453396 %
-    'bull_binary_short_threshold' : 0.620681288104058, # 0.00989771 # 81.89573460 %
+    'bull_binary_wide_threshold'    : 0.5410273671465529, #  0.00959177 # 51.05457708 %
+    'bull_binary_bulk_threshold'    : 0.5601240442207156, # 0.00966633 # 58.28928918 %
+    'bull_binary_narrow_threshold'  : 0.5864701454549608, # 0.00974751 # 69.47593583 %
+    'bull_binary_inter_threshold'   : 0.6286037257509173, # 0.00961261 # 79.32979070 %
+    'bull_binary_short_threshold'   : 0.620681288104058, # 0.00989771 # 81.89573460 %
 
-    'bear_binary_wide_threshold'  : 0.55, # 0.0
-    'bear_binary_bulk_threshold'  : 0.45818963200061946, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_threshold': 0.55, # 0.0
-    'bear_binary_inter_threshold' : 0.55, # 0.0
-    'bear_binary_short_threshold' : 0.5197649159773097, # 0.00361196 # 54.68975469 %
+    'bear_binary_wide_threshold'    : 0.55, # 0.0
+    'bear_binary_bulk_threshold'    : 0.45818963200061946, # 0.00304660 51.64271047 %
+    'bear_binary_narrow_threshold'  : 0.55, # 0.0
+    'bear_binary_inter_threshold'   : 0.55, # 0.0
+    'bear_binary_short_threshold'   : 0.5197649159773097, # 0.00361196 # 54.68975469 %
+    '''
+    'bull_binary_wide_comb'         : 0.5410273671465529, # 0.00959177 # 4.30919591 %
+    'bull_binary_bulk_comb'         : 0.54151254900918, # 0.24166773 # 53.87084527 %
+    'bull_binary_narrow_comb'       : 0.5362989911091635, # 0.24367532 # 55.73975990 %
+    'bull_binary_inter_comb'        : 0.5304831858679859, # 0.24520855 # 55.52740212 %
+    'bull_binary_short_comb'        : 0.5186238887400172, # 0.24742602 # 54.49171929 %
+    '''
+    'bull_binary_wide_comb'         : 0.5410273671465529, # 0.00959177 # 4.30919591 %
+    'bull_binary_bulk_comb'         : 0.5443996788063195, # 0.17400235 # 54.79788598 %
+    'bull_binary_narrow_comb'       : 0.5426327002956575, # 0.17544586 # 57.59606871 %
+    'bull_binary_inter_comb'        : 0.5388572239431149, # 0.17655049 # 57.97718443 %
+    'bull_binary_short_comb'        : 0.5250615484040865, # 0.17814728 # 56.26422624 %
 
-    'bull_binary_wide_comb'  : 0.5410273671465529, # 0.00959177 # 4.30919591 %
-    'bull_binary_bulk_comb'  : 0.54151254900918, # 0.24166773 # 53.87084527 %
-    'bull_binary_narrow_comb': 0.5362989911091635, # 0.24367532 # 55.73975990 %
-    'bull_binary_inter_comb' : 0.5304831858679859, # 0.24520855 # 55.52740212 %
-    'bull_binary_short_comb' : 0.5186238887400172, # 0.24742602 # 54.49171929 %
-
-    'bear_binary_wide_comb'  : 0.55, # 0.0
-    'bear_binary_bulk_comb'  : 0.45818963200061946, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_comb': 0.55, # 0.0
-    'bear_binary_inter_comb' : 0.55, # 0.0
-    'bear_binary_short_comb' : 0.5142886711656096, # 0.00902938 # 53.80974371 %
+    'bear_binary_wide_comb'         : 0.55, # 0.0
+    'bear_binary_bulk_comb'         : 0.45818963200061946, # 0.00304660 51.64271047 %
+    'bear_binary_narrow_comb'       : 0.55, # 0.0
+    'bear_binary_inter_comb'        : 0.55, # 0.0
+    'bear_binary_short_comb'        : 0.5142886711656096, # 0.00902938 # 53.80974371 %
 }
 
 
