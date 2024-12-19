@@ -13,7 +13,7 @@ def to_float(val):
     return np.float16(val)
 
 dashboard = {
-    'win_loss_quotient'         : 1.15,
+    'win_loss_quotient'         : 4.15,
     'equity_limit_ratio'        : 1.0,
     'goal'                      : 300,
     'risk_level'                : 6.0,
@@ -23,7 +23,7 @@ dashboard = {
     'medium_high_offset_ratio'  : 0.05,
     'max_offset_ratio'          : 0.1,
     'stop_offset_ratio'         : 0.025,
-    'loss_shrink_ratio'         : 0.1,
+    'loss_shrink_ratio'         : 0.2,
     'simple_to_volatile_ratio'  : 4,
     'defaultTradingMode'        : 'swing',
     'defaultDeltaTimeframePair' : 'h',
@@ -62,6 +62,7 @@ limit_spread = 0.03
 max_spread = 0.1
 limit_correlation = 0.3
 unfilled_order_lifespan_min = 5
+granularity_factor = 10
 
 
 prediction_period = 30 # in days
