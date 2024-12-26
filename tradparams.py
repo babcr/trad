@@ -2,96 +2,101 @@ import MetaTrader5 as mt5
 from math import ceil, floor
 import numpy as np
 
-#0,00560006
-#0,00249453
-#0,00555782
-#0,00255166
-#0,00533332
-#0,00257822
-
 def to_float(val):
     return np.float16(val)
 
-deviation = 5
+deviation                   = 5
 
-win_loss_quotient = 2.15
-equity_limit_ratio = 1.0
-goal = 1.1
-risk_level = 6.0
-accepted_risk_overrun = 0.25
-limit_spread = 0.03
-max_spread = 0.1
-limit_correlation = 0.3
+win_loss_quotient           = 4.15
+equity_limit_ratio          = 0.1
+goal                        = 1.1
+risk_level                  = 10.0
+accepted_risk_overrun       = 0.25
+limit_spread                = 0.03
+max_spread                  = 0.2
+limit_correlation           = 0.5
 
-loss_shrink_ratio = 0.2
-offset_shrink_ratio = 0.001
-granularity_factor = 10
-defaultTradingMode = 'swing'
+loss_shrink_ratio           = 0.3
+offset_shrink_ratio         = 0.005
+granularity_factor          = 10
+defaultTradingMode          = 'swing'
 
 unfilled_order_lifespan_min = 5
-prediction_period = 30 # in days
-hours_before_repeat_order = 5
-mean_period = 50
+prediction_period           = 30 # in days
+hours_before_repeat_order   = 5
+mean_period                 = 50
 
-dashboard = {
+dashboard                   = {
     # Risk management
-    'win_loss_quotient'             : win_loss_quotient,
-    'equity_limit_ratio'            : equity_limit_ratio,
-    'goal'                          : goal,
-    'risk_level'                    : risk_level,
-    'accepted_risk_overrun'         : accepted_risk_overrun,
-    'limit_correlation'             : limit_correlation,
-    'limit_spread'                  : limit_spread,
-    'max_spread'                    : max_spread,
+    'win_loss_quotient'                 : win_loss_quotient,
+    'equity_limit_ratio'                : equity_limit_ratio,
+    'goal'                              : goal,
+    'risk_level'                        : risk_level,
+    'accepted_risk_overrun'             : accepted_risk_overrun,
+    'limit_correlation'                 : limit_correlation,
+    'limit_spread'                      : limit_spread,
+    'max_spread'                        : max_spread,
 
     # Volatility management
-    'loss_shrink_ratio'             : loss_shrink_ratio,
-    'offset_shrink_ratio'           : offset_shrink_ratio,
-    'granularity_factor'            : granularity_factor,
-    'defaultTradingMode'            : defaultTradingMode,
+    'loss_shrink_ratio'                 : loss_shrink_ratio,
+    'offset_shrink_ratio'               : offset_shrink_ratio,
+    'granularity_factor'                : granularity_factor,
+    'defaultTradingMode'                : defaultTradingMode,
 
     # Base parameters
-    'defaultDeltaTimeframePair'     : 'h',
-    'base_currency'                 : 'EUR',
+    'defaultDeltaTimeframePair'         : 'h',
+    'base_currency'                     : 'EUR',
 
-    'unfilled_order_lifespan_min'   : unfilled_order_lifespan_min,
-    'prediction_period'             : prediction_period, # in days
-    'hours_before_repeat_order'     : hours_before_repeat_order,
-    'mean_period'                   : mean_period,
+    'unfilled_order_lifespan_min'       : unfilled_order_lifespan_min,
+    'prediction_period'                 : prediction_period, # in days
+    'hours_before_repeat_order'         : hours_before_repeat_order,
+    'mean_period'                       : mean_period,
 
     # Models parameters
-    'bull_binary_wide_threshold'    : 0.5410273671465529, #  0.00959177 # 51.05457708 %
-    'bull_binary_bulk_threshold'    : 0.5601240442207156, # 0.00966633 # 58.28928918 %
-    'bull_binary_narrow_threshold'  : 0.5864701454549608, # 0.00974751 # 69.47593583 %
-    'bull_binary_inter_threshold'   : 0.6286037257509173, # 0.00961261 # 79.32979070 %
-    'bull_binary_short_threshold'   : 0.620681288104058, # 0.00989771 # 81.89573460 %
+    'bull_binary_wide_threshold'        : 0.5410273671465529, #  0.00959177 # 51.05457708 %
+    'bull_binary_bulk_threshold'        : 0.5601240442207156, # 0.00966633 # 58.28928918 %
+    'bull_binary_narrow_threshold'      : 0.5864701454549608, # 0.00974751 # 69.47593583 %
+    'bull_binary_inter_threshold'       : 0.6608582432204393, # 0.00294289 # 83.59900815 %
+    'bull_binary_short_threshold'       : 0.669481696448141, # 0.00296983 # 87.32888733 %
 
-    'bear_binary_wide_threshold'    : 0.55, # 0.0
-    'bear_binary_bulk_threshold'    : 0.45818963200061946, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_threshold'  : 0.55, # 0.0
-    'bear_binary_inter_threshold'   : 0.55, # 0.0
-    'bear_binary_short_threshold'   : 0.5197649159773097, # 0.00361196 # 54.68975469 %
-    '''
-    'bull_binary_wide_comb'         : 0.5410273671465529, # 0.00959177 # 4.30919591 %
-    'bull_binary_bulk_comb'         : 0.54151254900918, # 0.24166773 # 53.87084527 %
-    'bull_binary_narrow_comb'       : 0.5362989911091635, # 0.24367532 # 55.73975990 %
-    'bull_binary_inter_comb'        : 0.5304831858679859, # 0.24520855 # 55.52740212 %
-    'bull_binary_short_comb'        : 0.5186238887400172, # 0.24742602 # 54.49171929 %
-    '''
-    'bull_binary_wide_comb'         : 0.5410273671465529, # 0.00959177 # 4.30919591 %
-    'bull_binary_bulk_comb'         : 0.5443996788063195, # 0.17400235 # 54.79788598 %
-    'bull_binary_narrow_comb'       : 0.5426327002956575, # 0.17544586 # 57.59606871 %
-    'bull_binary_inter_comb'        : 0.5388572239431149, # 0.17655049 # 57.97718443 %
-    'bull_binary_short_comb'        : 0.5250615484040865, # 0.17814728 # 56.26422624 %
+    'bull_binary_wide_rev_threshold'    : 0.5410273671465529, #  0.00959177 # 51.05457708 %
+    'bull_binary_bulk_rev_threshold'    : 0.5601240442207156, # 0.00966633 # 58.28928918 %
+    'bull_binary_narrow_rev_threshold'  : 0.5864701454549608, # 0.00974751 # 69.47593583 %
+    'bull_binary_inter_rev_threshold'   : 0.6608582432204393, # 0.00294289 # 83.59900815 %
+    'bull_binary_short_rev_threshold'   : 0.669481696448141, # 0.00296983 # 87.32888733 %
 
-    'bear_binary_wide_comb'         : 0.55, # 0.0
-    'bear_binary_bulk_comb'         : 0.45818963200061946, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_comb'       : 0.55, # 0.0
-    'bear_binary_inter_comb'        : 0.55, # 0.0
-    'bear_binary_short_comb'        : 0.5142886711656096, # 0.00902938 # 53.80974371 %
+    'bear_binary_wide_threshold'        : 0.55, # 0.0
+    'bear_binary_bulk_threshold'        : 0.45818963200061946, # 0.00304660 51.64271047 %
+    'bear_binary_narrow_threshold'      : 0.55, # 0.0
+    'bear_binary_inter_threshold'       : 0.55, # 0.0
+    'bear_binary_short_threshold'       : 0.5234204732099372, # 0.00180324 # 56.03000577 %
+
+    'bull_binary_wide_comb'             : 0.5410273671465529, # 0.00959177 # 4.30919591 %
+    'bull_binary_bulk_comb'             : 0.5443996788063195, # 0.17400235 # 54.79788598 %
+    'bull_binary_narrow_comb'           : 0.5426327002956575, # 0.17544586 # 57.59606871 %
+    'bull_binary_inter_comb'            : 0.5388572239431149, # 0.17655049 # 57.97718443 %
+    'bull_binary_short_comb'            : 0.5250615484040865, # 0.17814728 # 56.26422624 %
+
+    'bull_binary_wide_rev_comb'         : 0.5410273671465529, # 0.00959177 # 4.30919591 %
+    'bull_binary_bulk_rev_comb'         : 0.5474969152440783, # 0.11600018 # 25.92803184 %
+    'bull_binary_narrow_rev_comb'       : 0.5505109433060268, # 0.11696391 # 49.17049770 %
+    'bull_binary_inter_rev_comb'        : 0.5499325410510577, # 0.11770102 # 60.73482207 %
+    'bull_binary_short_rev_comb'        : 0.669481696448141, # 0.02969208 # 73.82741188 %
+
+    'bear_binary_wide_comb'             : 0.55, # 0.0
+    'bear_binary_bulk_comb'             : 0.45818963200061946, # 0.00304660 51.64271047 %
+    'bear_binary_narrow_comb'           : 0.55, # 0.0
+    'bear_binary_inter_comb'            : 0.55, # 0.0
+    'bear_binary_short_comb'            : 0.5142886711656096, # 0.00902938 # 53.80974371 %
 }
 
-
+'''
+'bull_binary_wide_comb'         : 0.5410273671465529, # 0.00959177 # 4.30919591 %
+'bull_binary_bulk_comb'         : 0.540433049216802, # 0.27066881 53.56183961 % 0.538786590245818, # 0.31900361 # 53.10746281 % 
+'bull_binary_narrow_comb'       : 0.5379120127425855, # 0.22418134 56.23863578 % 0.5370921499261588, # 0.23392781 # 56.00254916 % 
+'bull_binary_inter_comb'        : 0.5388572239431149, # 0.17655049 57.97718443 % 0.5456200863884992, # 0.13731821 # 60.18720962 % 
+'bull_binary_short_comb'        : 0.571667379499238, # 0.02969208 # 73.82741188 % 0.5417637841197652, # 0.07917645 # 62.56467645 % # 0.5538775951696272, # 0.04948541 # 67.88843950 %  0.5417637841197652, # 0.07917645 # 62.56467645 %
+'''
 minutes_in_a_year = 525600
 
 hourly  = (24 * mean_period, mt5.TIMEFRAME_H1)
@@ -153,8 +158,9 @@ symbols_list = [
     'cch','cj'
     'bu', 'xu', 'etu'
 ]
-demo = True
+demo = False
 #34
+#29
 pseudos = {
     'eu' : 'EURUSD',
     'eg' : 'EURGBP',
@@ -162,37 +168,31 @@ pseudos = {
     'ea' : 'EURAUD',
     'ech': 'EURCHF',
     'en' : 'EURNZD',
-    'es' : 'EURSGD',
-
+    #'es' : 'EURSGD',
     'uch': 'USDCHF',
     'uc' : 'USDCAD',
     'uj' : 'USDJPY',
-    'us' : 'USDSGD',
-
+    #'us' : 'USDSGD',
     'gch': 'GBPCHF',
     'ga' : 'GBPAUD',
     'gc' : 'GBPCAD',
     'gn' : 'GBPNZD',
     'gu' : 'GBPUSD',
     'gj' : 'GBPJPY',
-    'gs' : 'GBPSGD',
-
+    #'gs' : 'GBPSGD',
     'nu' : 'NZDUSD',
     'nc' : 'NZDCAD',
     'nch': 'NZDCHF',
     'nj' : 'NZDJPY',
-    'ns' : 'NZDSGD',
-
+    #'ns' : 'NZDSGD',
     'an' : 'AUDNZD',
     'ac' : 'AUDCAD',
     'ach': 'AUDCHF',
     'au' : 'AUDUSD',
-    'as' : 'AUDSGD',
+    #'as' : 'AUDSGD',
     'aj' : 'AUDJPY',
-
     'cch': 'CADCHF',
     'cj' : 'CADJPY',
-
     'bu' : f'BTCUSD{demo * ".bc"}',
     'etu': f'ETHUSD{demo * ".bc"}',
     'xu' : f'XRPUSD{demo * ".bc"}'

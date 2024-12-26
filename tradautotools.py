@@ -175,18 +175,41 @@ def candle_size(symbol, delta_timeframe_pair):
 
     return max_size, average_size
 
-'''
-def get_conv_pair(symbol, base=dashboard['base_currency']):
-    pair = None
-    if base=='EUR':
-        pair = eur_conv_pairs[symbol[3:]]
-    else:
-        print(f"Symbol {symbol} doesn't have a conversion pair")
-    return pair
 
-def get_conversion_factor(symbol, base=dashboard['base_currency']):
-    return get_prices(get_conv_pair(symbol, base))[0]
-'''
+def get_conversion_rate(symbol, base=dashboard['base_currency']):
+    # Connexion à MT5
+    init_metatrader_connexion()
+    
+    # Récupérer les informations sur le symbole
+    symbol_info = mt5.symbol_info(symbol)
+    if symbol_info is None:
+        print(f"Symbole {symbol} non trouvé")
+        close_metatrader_connexion()
+        return None
+    
+    if symbol_info.currency_profit != base:
+        conversion_rate_symbol = f"{symbol_info.currency_profit}{base}"
+        conversion_rate_info = mt5.symbol_info_tick(conversion_rate_symbol)
+        if conversion_rate_info is None:
+            conversion_rate_symbol = f"{base}{symbol_info.currency_profit}"
+            conversion_rate_info = mt5.symbol_info_tick(conversion_rate_symbol)
+            if conversion_rate_info is None:
+                print(f"Taux de conversion non disponible pour {conversion_rate_symbol}")
+                close_metatrader_connexion()
+                return None
+            else:
+                conversion_rate = 1 / conversion_rate_info.bid
+        else:
+            conversion_rate = conversion_rate_info.bid
+    else:
+        conversion_rate = 1.0
+
+    close_metatrader_connexion()
+    return conversion_rate
+
+#def get_conversion_factor(symbol, base=dashboard['base_currency']):
+#    return get_prices(get_conv_pair(symbol, base))[0]
+
 
 def get_minimal_lot_size(symbol):
     # Initialize MetaTrader5
@@ -262,7 +285,7 @@ def get_risk_value_and_lot_size(symbol, loss_variance, contract_size, conversion
     print(f"Minimum lot size = {desired_lot_size}")
     risk = None
     while True:
-        test_risk = 100.0 * contract_size * loss_variance * desired_lot_size / equity / conversion_price
+        test_risk = 100.0 * contract_size * loss_variance * desired_lot_size / equity * conversion_price
         if test_risk > risk_level:
             break
         else:
@@ -363,11 +386,12 @@ def get_attributes(
 
 
     contract_size = get_contract_size(symbol)
+    conversion_rate = get_conversion_rate(symbol)
 
     risk = None
     calc_volume = None
     if not volume:
-        risk, calc_volume = get_risk_value_and_lot_size(symbol, loss_variance, contract_size, loss_price)
+        risk, calc_volume = get_risk_value_and_lot_size(symbol, loss_variance, contract_size, conversion_rate)
 
     print(f"risk = {risk} %")
 

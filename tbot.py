@@ -11,6 +11,7 @@ from tradparams import order_types_, period, mperiod, pseudos, pseudos_we, mt5
 from tradparams import limit_correlation, dashboard, delta_timeframe_pair_pseudos
 from tradparams import unfilled_order_lifespan_min, hours_before_repeat_order, model_in_use_inter_bull, model_in_use_inter_bear, model_in_use_bulk_bull, model_in_use_bulk_bear, model_in_use_narrow_bull, model_in_use_narrow_bear, model_in_use_wide_bear, model_in_use_wide_bull, model_in_use_short_bear, model_in_use_short_bull
 import xgboost as xgb
+import copy
 from numpy import ndarray,corrcoef
 
 maxtry = 10
@@ -237,7 +238,7 @@ def init_env():
                 calculate_candlestick_score_realtime(pseudos[x], candles[pseudos[x]][mperiod - period + i])
             )
             present_times[pseudos[x]] = t
-
+ele = None
 def load_element(symbol):
     myn = minute_in_year_normalization(present_times[symbol])
     ele = scores[symbol].copy()
@@ -266,6 +267,15 @@ def get_pred(bull_pred, bear_pred, scale, keyword):
     if   bull_pred > dashboard[f'bull_binary_{scale}_{keyword}'] and bear_pred <= dashboard[f'bear_binary_{scale}_{keyword}']:
         pred = 2
     elif bear_pred > dashboard[f'bear_binary_{scale}_{keyword}'] and bull_pred <= dashboard[f'bull_binary_{scale}_{keyword}']:
+        pred = 0
+    else:
+        pred = 1
+    return pred
+
+def get_pred_rev(bull_pred, bear_pred, scale, keyword):
+    if   bull_pred > dashboard[f'bull_binary_{scale}_rev_{keyword}'] and bear_pred <= dashboard[f'bear_binary_{scale}_{keyword}']:
+        pred = 2
+    elif bear_pred > dashboard[f'bear_binary_{scale}_{keyword}'] and bull_pred <= dashboard[f'bull_binary_{scale}_rev_{keyword}']:
         pred = 0
     else:
         pred = 1
@@ -422,62 +432,196 @@ def correlated(symbol, ele):
                 return True
     return False
 
+def is_in_last_30_seconds_of_hour():
+    now = datetime.now()
+    return now.minute == 59 and now.second >= 30
+
+pred = 1
+pred_ = 1
+pred_rev = 1
+pred_rev_ = 1
+
+pred_bull_bulk = 0
+pred_bull_narrow = 0
+pred_bull_inter = 0
+pred_bull_short = 0
+pred_bear_bulk = 0
+pred_bear_narrow = 0
+pred_bear_inter = 0
+pred_bear_short = 0
+pred_narrow = 0
+pred_short = 0
+pred_inter = 0
+pred_bulk = 0
+pred_narrow_ = 0
+pred_short_ = 0
+pred_inter_ = 0
+pred_bulk_ = 0
+pred_rev_bear_bulk = 0
+pred_rev_bear_narrow = 0
+pred_rev_bear_inter = 0
+pred_rev_bear_short = 0
+pred_rev_bull_bulk = 0
+pred_rev_bull_narrow = 0
+pred_rev_bull_inter = 0
+pred_rev_bull_short = 0
+pred_rev_narrow = 0
+pred_rev_short = 0
+pred_rev_inter = 0
+pred_rev_bulk = 0
+pred_rev_narrow_ = 0
+pred_rev_short_ = 0
+pred_rev_inter_ = 0
+pred_rev_bulk_ = 0
+
+initial_preds = {
+    "pred_bull_bulk" : 0,
+    "pred_bull_narrow" : 0,
+    "pred_bull_inter" : 0,
+    "pred_bull_short" : 0,
+    "pred_bear_bulk" : 0,
+    "pred_bear_narrow" : 0,
+    "pred_bear_inter" : 0,
+    "pred_bear_short" : 0,
+    "pred_narrow" : 0,
+    "pred_short" : 0,
+    "pred_inter" : 0,
+    "pred_bulk" : 0,
+    "pred_narrow_" : 0,
+    "pred_short_" : 0,
+    "pred_inter_" : 0,
+    "pred_bulk_" : 0,
+    "pred_rev_bear_bulk" : 0,
+    "pred_rev_bear_narrow" : 0,
+    "pred_rev_bear_inter" : 0,
+    "pred_rev_bear_short" : 0,
+    "pred_rev_bull_bulk" : 0,
+    "pred_rev_bull_narrow" : 0,
+    "pred_rev_bull_inter" : 0,
+    "pred_rev_bull_short" : 0,
+    "pred_rev_narrow" : 0,
+    "pred_rev_short" : 0,
+    "pred_rev_inter" : 0,
+    "pred_rev_bulk" : 0,
+    "pred_rev_narrow_" : 0,
+    "pred_rev_short_" : 0,
+    "pred_rev_inter_" : 0,
+    "pred_rev_bulk_" : 0,
+    "pred" : 1,
+    "pred_" : 1,
+    "pred_rev" : 1,
+    "pred_rev_" : 1
+}
+
+first = True
+preds = {}
+
 def loop():
+    global initial_preds
     global iteration_time
+    global first
+    global preds
+    global ele
     if datetime.now() - iteration_time > timedelta(hours=1):
         init_env()
     pse = None
     if is_weekend():
-        pse = pseudos_we
+        pse = pseudos_we # pseudos_we
     else:
         pse = pseudos
 
+    
     for x in pse:
-        load_candle(pseudos[x])
-        ele = load_element(pseudos[x])
-        #if pseudos[x][:6] == 'BTCUSD':
-        #    print(ele)
-        #pred_bull_wide   = apply_model(model_bull_wide, ele)[0]
-        #pred_bear_wide   = apply_model(model_bear_wide, ele)[0]
-        pred_bull_narrow = apply_model(model_bull_narrow, ele)[0]
-        pred_bear_narrow = apply_model(model_bear_narrow, ele)[0]
-        pred_bull_short  = apply_model(model_bull_short, ele)[0]
-        pred_bear_short  = apply_model(model_bear_short, ele)[0]
-        pred_bull_inter  = apply_model(model_bull_inter, ele)[0]
-        pred_bear_inter  = apply_model(model_bear_inter, ele)[0]
-        pred_bull_bulk   = apply_model(model_bull_bulk, ele)[0]
-        pred_bear_bulk   = apply_model(model_bear_bulk, ele)[0]
+        if is_in_last_30_seconds_of_hour() or first == True:
+            if pseudos[x] == 'EURUSD':
+                print("=============================================================")
+            if pseudos[x] not in preds:
+                preds[pseudos[x]] = copy.deepcopy(initial_preds)
+            load_candle(pseudos[x])
+            ele = load_element(pseudos[x])
+            #if pseudos[x][:6] == 'BTCUSD':
+            #    print(ele)
+            #preds[pseudos[x]]["pred_bull_wide"]     = apply_model(model_bull_wide,    ele)[0]
+            #preds[pseudos[x]]["pred_bear_wide"]     = apply_model(model_bear_wide,    ele)[0]
+            preds[pseudos[x]]["pred_bull_bulk"]      = apply_model(model_bull_bulk,    ele)[0]
+            preds[pseudos[x]]["pred_bull_narrow"]    = apply_model(model_bull_narrow,  ele)[0]
+            preds[pseudos[x]]["pred_bull_inter"]     = apply_model(model_bull_inter,   ele)[0]
+            preds[pseudos[x]]["pred_bull_short"]     = apply_model(model_bull_short,   ele)[0]
 
-        #pred_wide = get_pred(pred_bull_wide, pred_bear_wide, 'wide', 'threshold')
-        pred_narrow = get_pred(pred_bull_narrow, pred_bear_narrow, 'narrow', 'threshold')
-        pred_short = get_pred(pred_bull_short, pred_bear_short, 'short', 'threshold')
-        pred_inter = get_pred(pred_bull_inter, pred_bear_inter, 'inter', 'threshold')
-        pred_bulk = get_pred(pred_bull_bulk, pred_bear_bulk, 'bulk', 'threshold')
+            preds[pseudos[x]]["pred_bear_bulk"]      = apply_model(model_bear_bulk,    ele)[0]
+            preds[pseudos[x]]["pred_bear_narrow"]    = apply_model(model_bear_narrow,  ele)[0]
+            preds[pseudos[x]]["pred_bear_inter"]     = apply_model(model_bear_inter,   ele)[0]
+            preds[pseudos[x]]["pred_bear_short"]     = apply_model(model_bear_short,   ele)[0]
 
-        #pred_wide_ = get_pred(pred_bull_wide, pred_bear_wide, 'wide', 'comb')
-        pred_narrow_ = get_pred(pred_bull_narrow, pred_bear_narrow, 'narrow', 'comb')
-        pred_short_ = get_pred(pred_bull_short, pred_bear_short, 'short', 'comb')
-        pred_inter_ = get_pred(pred_bull_inter, pred_bear_inter, 'inter', 'comb')
-        pred_bulk_ = get_pred(pred_bull_bulk, pred_bear_bulk, 'bulk', 'comb')
+            #preds[pseudos[x]]["pred_wide"]          = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'threshold')
+            preds[pseudos[x]]["pred_narrow"]         = get_pred(preds[pseudos[x]]["pred_bull_narrow"] ,    preds[pseudos[x]]["pred_bear_narrow"] , 'narrow', 'threshold')
+            preds[pseudos[x]]["pred_short"]          = get_pred(preds[pseudos[x]]["pred_bull_short"] ,     preds[pseudos[x]]["pred_bear_short"] , 'short', 'threshold')
+            preds[pseudos[x]]["pred_inter"]          = get_pred(preds[pseudos[x]]["pred_bull_inter"] ,     preds[pseudos[x]]["pred_bear_inter"] , 'inter', 'threshold')
+            preds[pseudos[x]]["pred_bulk"]           = get_pred(preds[pseudos[x]]["pred_bull_bulk"] ,      preds[pseudos[x]]["pred_bear_bulk"] , 'bulk', 'threshold')
 
-        pred = None
-        if      pred_short == 2 and (pred_narrow == 2 or pred_bulk == 2 or pred_inter == 2):
-            pred = 2
-        elif    pred_short == 0  and (pred_narrow < 2 and pred_bulk < 2 and pred_inter < 2):
-            pred = 0
-        else:
-            pred = 1
+            #preds[pseudos[x]]["pred_wide_"] = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'comb')
+            preds[pseudos[x]]["pred_narrow_"]        = get_pred(preds[pseudos[x]]["pred_bull_narrow"] ,    preds[pseudos[x]]["pred_bear_narrow"] , 'narrow', 'comb')
+            preds[pseudos[x]]["pred_short_"]         = get_pred(preds[pseudos[x]]["pred_bull_short"] ,     preds[pseudos[x]]["pred_bear_short"] , 'short', 'comb')
+            preds[pseudos[x]]["pred_inter_"]         = get_pred(preds[pseudos[x]]["pred_bull_inter"] ,     preds[pseudos[x]]["pred_bear_inter"] , 'inter', 'comb')
+            preds[pseudos[x]]["pred_bulk_"]          = get_pred(preds[pseudos[x]]["pred_bull_bulk"] ,      preds[pseudos[x]]["pred_bear_bulk"] , 'bulk', 'comb')
 
-        pred_ = None
-        if      pred_narrow_ == 2 and pred_short_ == 2 and pred_inter_ == 2 and pred_bulk_ == 2:
-            pred_ = 2
-        elif    pred_short_ == 0 and pred_bulk_ == 0 and pred_narrow_ < 2 and pred_inter_ < 2:
-            pred_ = 0
-        else:
-            pred_ = 1
+            opele = [[-x for x in ele[0]]]
+            preds[pseudos[x]]["pred_rev_bear_bulk"]  = apply_model(model_bull_bulk,   opele)[0]
+            preds[pseudos[x]]["pred_rev_bear_narrow"] = apply_model(model_bull_narrow, opele)[0]
+            preds[pseudos[x]]["pred_rev_bear_inter"] = apply_model(model_bull_inter,  opele)[0]
+            preds[pseudos[x]]["pred_rev_bear_short"] = apply_model(model_bull_short,  opele)[0]
 
-        print(f"{pseudos[x][:6]} {str(pred_bulk)+str(pred_narrow)+str(pred_inter)+str(pred_short)+str(pred_)} : {scores[pseudos[x]][-1]}")
+            preds[pseudos[x]]["pred_rev_bull_bulk"]  = apply_model(model_bear_bulk,   opele)[0]
+            preds[pseudos[x]]["pred_rev_bull_narrow"]= apply_model(model_bear_narrow, opele)[0]
+            preds[pseudos[x]]["pred_rev_bull_inter"] = apply_model(model_bear_inter,  opele)[0]
+            preds[pseudos[x]]["pred_rev_bull_short"] = apply_model(model_bear_short,  opele)[0]
 
+            #preds[pseudos[x]]["pred_wide"]          = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'threshold')
+            preds[pseudos[x]]["pred_rev_narrow"]     = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_narrow"] , preds[pseudos[x]]["pred_rev_bull_narrow"] , 'narrow', 'threshold')
+            preds[pseudos[x]]["pred_rev_short"]      = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_short"] , preds[pseudos[x]]["pred_rev_bull_short"] , 'short', 'threshold')
+            preds[pseudos[x]]["pred_rev_inter"]      = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_inter"] , preds[pseudos[x]]["pred_rev_bull_inter"] , 'inter', 'threshold')
+            preds[pseudos[x]]["pred_rev_bulk"]       = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_bulk"] , preds[pseudos[x]]["pred_rev_bull_bulk"] , 'bulk', 'threshold')
+
+            #preds[pseudos[x]]["pred_wide_"] = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'comb')
+            preds[pseudos[x]]["pred_rev_narrow_"]    = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_narrow"] , preds[pseudos[x]]["pred_rev_bull_narrow"] , 'narrow', 'comb')
+            preds[pseudos[x]]["pred_rev_short_"]     = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_short"] , preds[pseudos[x]]["pred_rev_bull_short"] , 'short', 'comb')
+            preds[pseudos[x]]["pred_rev_inter_"]     = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_inter"] , preds[pseudos[x]]["pred_rev_bull_inter"] , 'inter', 'comb')
+            preds[pseudos[x]]["pred_rev_bulk_"]      = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_bulk"] , preds[pseudos[x]]["pred_rev_bull_bulk"] , 'bulk', 'comb')
+
+            preds[pseudos[x]]["pred"] = None
+            if      (preds[pseudos[x]]["pred_short"] == 2 or preds[pseudos[x]]["pred_inter"] == 2) and (preds[pseudos[x]]["pred_narrow"] == 2 or preds[pseudos[x]]["pred_bulk"] == 2 ):
+                preds[pseudos[x]]["pred"] = 2
+            elif    preds[pseudos[x]]["pred_short"] == 0  and (preds[pseudos[x]]["pred_narrow"] < 2 and preds[pseudos[x]]["pred_bulk"] < 2 and preds[pseudos[x]]["pred_inter"] < 2):
+                preds[pseudos[x]]["pred"] = 0
+            else:
+                preds[pseudos[x]]["pred"] = 1
+
+            preds[pseudos[x]]["pred_"] = None
+            if      preds[pseudos[x]]["pred_narrow_"] == 2 and preds[pseudos[x]]["pred_short_"] == 2 and preds[pseudos[x]]["pred_inter_"] == 2 and preds[pseudos[x]]["pred_bulk_"] == 2:
+                preds[pseudos[x]]["pred_"] = 2
+            elif    preds[pseudos[x]]["pred_short_"] == 0 and preds[pseudos[x]]["pred_bulk_"] == 0 and preds[pseudos[x]]["pred_narrow"] < 2 and preds[pseudos[x]]["pred_inter"] < 2:
+                preds[pseudos[x]]["pred_"] = 0
+            else:
+                preds[pseudos[x]]["pred_"] = 1
+
+            preds[pseudos[x]]["pred_rev"] = None
+            if      (preds[pseudos[x]]["pred_rev_short"] == 2 or preds[pseudos[x]]["pred_rev_inter"] == 2) and (preds[pseudos[x]]["pred_rev_narrow"] == 2 or preds[pseudos[x]]["pred_rev_bulk"] == 2 ):
+                preds[pseudos[x]]["pred_rev"] = 0
+            elif    preds[pseudos[x]]["pred_rev_short"] == 0  and (preds[pseudos[x]]["pred_rev_narrow"] < 2 and preds[pseudos[x]]["pred_rev_bulk"] < 2 and preds[pseudos[x]]["pred_rev_inter"] < 2):
+                preds[pseudos[x]]["pred_rev"] = 1
+            else:
+                preds[pseudos[x]]["pred_rev"] = 1
+
+            preds[pseudos[x]]["pred_rev_"] = None
+            if      preds[pseudos[x]]["pred_rev_narrow_"] == 2 and preds[pseudos[x]]["pred_rev_short_"] == 2 and preds[pseudos[x]]["pred_rev_inter_"] == 2 and preds[pseudos[x]]["pred_rev_bulk_"] == 2:
+                preds[pseudos[x]]["pred_rev_"] = 0
+            elif    preds[pseudos[x]]["pred_rev_short_"] == 0 and preds[pseudos[x]]["pred_rev_bulk_"] == 0 and preds[pseudos[x]]["pred_rev_narrow"] < 2 and preds[pseudos[x]]["pred_rev_inter"] < 2:
+                preds[pseudos[x]]["pred_rev_"] = 2
+            else:
+                preds[pseudos[x]]["pred_rev_"] = 1
+            
+
+            print(f"{pseudos[x][:6]} {str(preds[pseudos[x]]["pred"] )} {str(preds[pseudos[x]]["pred_bulk"] )+str(preds[pseudos[x]]["pred_narrow"] )+str(preds[pseudos[x]]["pred_inter"] )+str(preds[pseudos[x]]["pred_short"] )} - {str(preds[pseudos[x]]["pred_"] )} {str(preds[pseudos[x]]["pred_bulk_"] )+str(preds[pseudos[x]]["pred_narrow_"] )+str(preds[pseudos[x]]["pred_inter_"] )+str(preds[pseudos[x]]["pred_short_"] )} | {str(pred_rev)} {str(preds[pseudos[x]]["pred_rev_bulk"] )+str(preds[pseudos[x]]["pred_rev_narrow"] )+str(preds[pseudos[x]]["pred_rev_inter"] )+str(preds[pseudos[x]]["pred_rev_short"] )} - {str(preds[pseudos[x]]["pred_rev_"] )} {str(preds[pseudos[x]]["pred_rev_bulk_"] )+str(preds[pseudos[x]]["pred_rev_narrow_"] )+str(preds[pseudos[x]]["pred_rev_inter_"] )+str(preds[pseudos[x]]["pred_rev_short_"] )}: {scores[pseudos[x]][-1]}")
 
         if pseudos[x] not in last_orders:
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -488,7 +632,7 @@ def loop():
             else:
                 continue
 
-        if pred == 2 or pred_ == 2:
+        if ((preds[pseudos[x]]["pred"] == 2 or preds[pseudos[x]]["pred_"] == 2) and (preds[pseudos[x]]["pred_rev"] > 0 and preds[pseudos[x]]["pred_rev_"] > 0)) or ((preds[pseudos[x]]["pred_rev"] == 2 or preds[pseudos[x]]["pred_rev_"] == 2) and (preds[pseudos[x]]["pred"] > 0 and preds[pseudos[x]]["pred_"] > 0)):
             if check_open_positions(pseudos[x]):
                 if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
                     continue
@@ -503,7 +647,7 @@ def loop():
             )
             last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        elif pred == 0 or pred_ == 0:
+        elif ((preds[pseudos[x]]["pred"] == 0 or preds[pseudos[x]]["pred_"] == 0) and (preds[pseudos[x]]["pred_rev"] < 2 and preds[pseudos[x]]["pred_rev_"] < 2)) or ((preds[pseudos[x]]["pred_rev"] == 0 or preds[pseudos[x]]["pred_rev_"] == 0) and (preds[pseudos[x]]["pred"] < 2 and preds[pseudos[x]]["pred_"] < 2)):
             if check_open_positions(pseudos[x]):
                 if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
                     continue
@@ -520,8 +664,9 @@ def loop():
         else:
             pass
     iteration_time = datetime.now()
-    sleep(60)
-    print(f"======================================================================")
+    first = False
+    sleep(15)
+    
 
 def main():
     init_models()
