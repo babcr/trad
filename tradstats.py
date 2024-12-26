@@ -23,7 +23,7 @@ def calculate_candlestick_score(last_candle, number_of_prediction_candlesticks=2
     open_price = last_candle['open']
     close_price = last_candle['close']
     high_price = last_candle['high']
-    low_price = last_candle['low']
+    low_price = last_candle['low'] 
 
     if new:
         base_sum_support.append(high_price - low_price)

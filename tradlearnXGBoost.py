@@ -32,6 +32,7 @@ def xload(filepath):
 num_features = period - testnum + 1
 batch_size = 32  # À ajuster selon les performances de votre machine
 test_split_ratio = 0.2
+train_split_ratio = 0.75
 cert_deg = certitude_degree_of_categorization
 epsilon = 0.001
 last_epsilon = 0.000001
@@ -338,13 +339,13 @@ def test_model(learningrate=learning_rate, trend=learning_trend, mode=mode,exten
     # Load the model from the file
     narfact = mode_to_narfact(mode)
 
-    model_name = f"M{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
+    model_name = f"model_data/M{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
     bst = xload(model_name)
 
     print(f"model {model_name} successfully loaded.")
 
     # Load DMatrix
-    csv_name = f'dtest{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
+    csv_name = f'test_data/dtest{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
     dtest = load_csv_to_dtest(csv_name)
     y_test = dtest.get_label()
 
@@ -380,12 +381,16 @@ def datas(symbol, folder = folder, mode = mode):
     ))
 
     # Calcul des tailles d'entrainement et de test
-    total_size = len(df)
-    train_size = int(total_size * (1 - test_split_ratio))
+    t_size = len(df)
+    skip_size   = int(t_size * (1 - train_split_ratio))
+    total_size  = int(t_size * train_split_ratio)
+    train_size  = int(total_size * (1 - test_split_ratio))
+    #test_size  = int(train_size * test_split_ratio)
 
     # Division du dataset en données d'entrainement et de test
-    train_dataset = dataset.take(train_size).batch(batch_size).shuffle(1000)
-    test_dataset = dataset.skip(train_size).batch(batch_size)
+    #_dataset = dataset.skip(t_size - total_size).batch(batch_size) # dataset.take(train_size).batch(batch_size).shuffle(1000)
+    train_dataset = dataset.skip(skip_size).take(train_size).batch(batch_size).shuffle(1000)
+    test_dataset = dataset.skip(skip_size).skip(train_size).batch(batch_size)
 
     #test_dataset = test_dataset.filter(lambda x, y: abs(y[0]) > 4.0)
     #train_dataset = train_dataset.filter(lambda x, y: abs(y[0]) > 3.0)
@@ -503,7 +508,7 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
     print(f"y_train length = {len(y_train)}") # Check number of labels
 
     dtest = xgb.DMatrix(X_test, label=y_test  )
-    csv_name = f'dtest{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
+    csv_name = f'test_data/dtest{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
     save_dtest_csv(dtest, csv_name)
     print(f"{csv_name} saved.")
 
@@ -524,7 +529,7 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
     watchlist = [(dtrain, 'train') , (dtest, 'eval')] #
     bst = xgb.train(params, dtrain, num_boost_round=num_boost_round, evals=watchlist,verbose_eval=50, early_stopping_rounds=10)
 
-    model_name = f"M{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
+    model_name = f"model_data/M{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
     rmfile(model_name)
     xdump(bst, model_name)
     print(f"Model {model_name} saved.")

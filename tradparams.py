@@ -30,6 +30,7 @@ minutes_in_a_year = 525600
 hourly  = (24 * prediction_period * 2, mt5.TIMEFRAME_H1)
 min5    = (2 * prediction_period * 2, mt5.TIMEFRAME_M5)
 min15   = (6 * prediction_period * 2, mt5.TIMEFRAME_M15)
+min30   = (3 * prediction_period * 2, mt5.TIMEFRAME_M30)
 hour6   = (24 * 6 * prediction_period * 2, mt5.TIMEFRAME_H6)
 daily   = (24 * 24 * prediction_period * 2, mt5.TIMEFRAME_D1)
 
@@ -40,6 +41,7 @@ delta_timeframe_pair_pseudos = {
     'h' : hourly,
     'm' : min5,
     'mm': min15,
+    'm3': min30,
     's' : hour6,
     'd' : daily
 }
@@ -89,19 +91,6 @@ symbols_list = [
 #34
 demo = True
 
-## AUDNZD
-## BTCUSD.bc
-## ETHUSD.bc
-## EURCHF
-## GBPCAD
-## GBPNZD
-## GBPSGD
-## GBPUSD
-## XRPUSD.bc
-## USDCAD
-## NZDSGD
-## NZDCHF
-## NZDCAD
 pseudos = {
 
     'ech': 'EURCHF',
@@ -111,7 +100,6 @@ pseudos = {
     'gc' : 'GBPCAD',
     'gn' : 'GBPNZD',
     'gu' : 'GBPUSD',
-
     'gs' : 'GBPSGD',
 
     'nc' : 'NZDCAD',
@@ -120,11 +108,6 @@ pseudos = {
     'ns' : 'NZDSGD',
 
     'an' : 'AUDNZD',
-
-
-    'bu' : f'BTCUSD{demo * ".bc"}',
-    'xu' : f'XRPUSD{demo * ".bc"}',
-    'etu': f'ETHUSD{demo * ".bc"}',
 
     'ac' : 'AUDCAD',
     'ach': 'AUDCHF',
@@ -150,61 +133,7 @@ pseudos = {
     'eg' : 'EURGBP',
     'ec' : 'EURCAD',
     'ea' : 'EURAUD',
-}
 
-pseudos_ok = {
-
-    'ac' : 'AUDCAD',
-    'ach': 'AUDCHF',
-    'au' : 'AUDUSD',
-    'as' : 'AUDSGD',
-    'aj' : 'AUDJPY',
-
-    'cch': 'CADCHF',
-    'cj' : 'CADJPY',
-    'nu' : 'NZDUSD',
-    'nj' : 'NZDJPY',
-    'gj' : 'GBPJPY',
-    'uj' : 'USDJPY',
-    'us' : 'USDSGD',
-
-    'gch': 'GBPCHF',
-    'ga' : 'GBPAUD',
-    'en' : 'EURNZD',
-    'es' : 'EURSGD',
-
-    'uch': 'USDCHF',
-    'eu' : 'EURUSD',
-    'eg' : 'EURGBP',
-    'ec' : 'EURCAD',
-    'ea' : 'EURAUD'
-}
-
-pseudos_nok = {
-    'ech': 'EURCHF',
-
-    'uc' : 'USDCAD',
-
-    'gc' : 'GBPCAD',
-    'gn' : 'GBPNZD',
-    'gu' : 'GBPUSD',
-
-    'gs' : 'GBPSGD',
-
-    'nc' : 'NZDCAD',
-    'nch': 'NZDCHF',
-
-    'ns' : 'NZDSGD',
-
-    'an' : 'AUDNZD',
-
-
-    'bu' : f'BTCUSD{demo * ".bc"}',
-    'xu' : f'XRPUSD{demo * ".bc"}',
-    'etu': f'ETHUSD{demo * ".bc"}'
-}
-
-volatiles = {
     'bu' : f'BTCUSD{demo * ".bc"}',
     'xu' : f'XRPUSD{demo * ".bc"}',
     'etu': f'ETHUSD{demo * ".bc"}'
@@ -273,6 +202,6 @@ modelfile_extension = ".json"
 testfile_extension = ".csv"
 extensions = [".json", ".ubj", ".bin", ".joblib", ".pkl"]
 narfact = 1.0 # to choose on which time scale you which to perform  modelling and tests
-model_in_use = f"M{prediction_period}_{mean_period}_{learning_rate}_{percentile}_{learning_trend}_{mode}_{testnum * narfact}{modelfile_extension}"
+model_in_use = f"model_data/M{prediction_period}_{mean_period}_{learning_rate}_{percentile}_{learning_trend}_{mode}_{testnum * narfact}{modelfile_extension}"
 
 
