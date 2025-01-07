@@ -3,7 +3,7 @@
 
 import tradlearnXGBoost as x
 import argparse
-from tradparams import modes, trends, extensions, learning_rate, learning_trend, mode, modelfile_extension
+from tradparams import ranges, trends, extensions, learning_rate, learning_trend, mode, modelfile_extension
 
 def main(
     learningrate,
@@ -40,7 +40,7 @@ if __name__ == '__main__':
         "--mode",
         help="Mode",
         default=mode,
-        choices = modes
+        choices = ranges
     )
 
     parser.add_argument(

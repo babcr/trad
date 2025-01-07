@@ -1,6 +1,6 @@
 from random import randint
 from tradparams import granularity_factor, order_suffix, deviation, max_spread, limit_spread, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
-from tradparams import delta_timeframe_pair_pseudos, orders_list, symbols_list, symbol_converter
+from tradparams import delta_timeframe_pair_pseudos, orders_list, symbols_list, pseudos, symbol_converter
 from math import ceil, floor
 from os import path, remove
 from datetime import datetime, timedelta
@@ -53,6 +53,55 @@ def check_symbol(symbol):
 
 def close_metatrader_connexion():
     mt5.shutdown()
+
+
+def calculate_start_year(timeframe, x, points_per_vector, current_date=None):
+    """
+    Calcule l'année à partir de laquelle il faut charger des données Forex pour un symbol donné.
+    
+    :param symbol: (str) Le symbole Forex (par exemple "EURUSD").
+    :param timeframe: (int) Le timeframe de MetaTrader 5 (ex. mt5.TIMEFRAME_M1).
+    :param x: (int) Nombre de vecteurs souhaités.
+    :param points_per_vector: (int) Nombre de valeurs par vecteur.
+    :param current_date: (datetime) Date actuelle pour référence. Si None, prend la date actuelle.
+    :return: (int) Année à partir de laquelle commencer le chargement des données.
+    """
+    # Utiliser la date actuelle si aucune n'est spécifiée
+    if current_date is None:
+        current_date = datetime.now()
+
+    # Total de points nécessaires
+    total_points = x + points_per_vector
+
+    # Obtenir la durée d'un point pour le timeframe spécifié
+    timeframe_durations = {
+        mt5.TIMEFRAME_M1: timedelta(minutes=1),
+        mt5.TIMEFRAME_M5: timedelta(minutes=5),
+        mt5.TIMEFRAME_M15: timedelta(minutes=15),
+        mt5.TIMEFRAME_M30: timedelta(minutes=30),
+        mt5.TIMEFRAME_H1: timedelta(hours=1),
+        mt5.TIMEFRAME_H2: timedelta(hours=2),
+        mt5.TIMEFRAME_H3: timedelta(hours=3),
+        mt5.TIMEFRAME_H4: timedelta(hours=4),
+        mt5.TIMEFRAME_H6: timedelta(hours=6),
+        mt5.TIMEFRAME_H8: timedelta(hours=8),
+        mt5.TIMEFRAME_H12: timedelta(hours=12),
+        mt5.TIMEFRAME_D1: timedelta(days=1)
+    }
+    if timeframe not in timeframe_durations:
+        raise ValueError("Timeframe non pris en charge.")
+
+    point_duration = timeframe_durations[timeframe]
+
+    # Calculer la période totale nécessaire
+    total_duration = point_duration * total_points * (1 + 2 / 7)
+
+    # Calculer la date de début
+    start_date = current_date - total_duration
+
+    # Retourner l'année de la date de début
+    return start_date.year
+
 
 
 def send_order(
@@ -302,18 +351,19 @@ def get_risk_value_and_lot_size(symbol, loss_variance, contract_size, conversion
     return risk, desired_lot_size
 
 
-def get_loss_var(symbol, delta_timeframe_pair, granularity_fact=granularity_factor, timescale=dashboard['defaultTradingMode'], loss_shrink=dashboard['loss_shrink_ratio'], offset_shrink=dashboard['offset_shrink_ratio'], loss_to_win=dashboard['win_loss_quotient']):
+def get_loss_var(symbol, delta_timeframe_pair, raw_spread, granularity_fact=granularity_factor, timescale=dashboard['defaultTradingMode'], loss_shrink=dashboard['loss_shrink_ratio'], offset_shrink=dashboard['offset_shrink_ratio'], loss_to_win=dashboard['win_loss_quotient']):
     max_candle_size, avg_candle_size = candle_size(symbol, delta_timeframe_pair)
+    scale_factor = 1 #delta_timeframe_pair_pseudos['h'][0] / delta_timeframe_pair[0]
 
     if timescale=='swing':
-        loss_var = ceil(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * loss_shrink / granularity_fact
-        offset =  ceil(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * offset_shrink / granularity_fact
+        loss_var = scale_factor * ceil(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * loss_shrink / granularity_fact
+        offset =  scale_factor * ceil(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * offset_shrink / granularity_fact
     elif timescale=='intraday':
-        loss_var = floor(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * loss_shrink / granularity_fact
-        offset =  floor(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * offset_shrink / granularity_fact
+        loss_var = scale_factor * floor(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * loss_shrink / granularity_fact
+        offset =  scale_factor * floor(granularity_fact * max_candle_size / avg_candle_size) * avg_candle_size * offset_shrink / granularity_fact
     else:
         raise UnknownModeException(timescale)
-    return loss_var, loss_to_win * loss_var , offset
+    return loss_var, loss_to_win * (loss_var + raw_spread) , offset
 
 def get_attributes(
     symbol     ,
@@ -322,14 +372,16 @@ def get_attributes(
     price      ,
     delta_timeframe_pair
 ):
-    loss_variance, win_variance, offset = get_loss_var(symbol, delta_timeframe_pair)
+    bid, ask = get_prices(symbol)
+    raw_spread = ask - bid
+    loss_variance, win_variance, offset = get_loss_var(symbol, delta_timeframe_pair, raw_spread)
 
     print(f"loss_variance = {loss_variance}")
 
     print(f"offset = {offset}")
 
-    bid, ask = get_prices(symbol)
-    spread = (ask - bid) / loss_variance
+    
+    spread = raw_spread / loss_variance
     if spread > limit_spread:
         ordertype = ordertype.replace('_market', order_suffix)
 

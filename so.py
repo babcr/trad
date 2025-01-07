@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 from tradautotools import SpreadTooHighException, RiskTooHighException
 from tradautotools import get_attributes, send_order, candle_size, get_equity, get_prices, get_contract_size, symbol_converter
-from tradautotools import delta_timeframe_pair_pseudos, dashboard, orders_list, symbols_list
+from tradautotools import delta_timeframe_pair_pseudos, dashboard, orders_list, pseudos
 import argparse
 
 
@@ -55,7 +55,7 @@ if __name__ == '__main__':
         "--symbol",
         help="the symbol you need to place the trade on",
         default=r'',
-        choices = symbols_list,
+        choices = pseudos.keys(),
         required=True
     )
     parser.add_argument(

@@ -16,7 +16,7 @@ import argparse
 from scipy.sparse import csr_matrix
 import xgboost as xgb
 from collections import deque
-from tradparams import initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, testnum, period, folder, mode
+from tradparams import initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, ranges, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, testnum, period, folder, mode
 
 
 def xdump(model,filepath):
@@ -587,7 +587,7 @@ if __name__ == '__main__':
         "--mode",
         help="Mode",
         default=mode,
-        choices = modes
+        choices = ranges
     )
 
     # symbol, order_type, volume, price=None, sl=None, tp=None

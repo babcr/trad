@@ -7,38 +7,24 @@ from time import sleep
 from numpy import void, float64
 from so import main as so
 from tradautotools import init_metatrader_connexion, close_metatrader_connexion
-from tradparams import order_types_, period, mperiod, pseudos, pseudos_we, mt5
+from tradparams import order_types_, period, mperiod, pseudos, pseudos_we, mt5, ranges_equi, prediction_period, mean_period, learning_rate, percentile, modelfile_extension
 from tradparams import limit_correlation, dashboard, delta_timeframe_pair_pseudos
-from tradparams import unfilled_order_lifespan_min, hours_before_repeat_order, model_in_use_inter_bull, model_in_use_inter_bear, model_in_use_bulk_bull, model_in_use_bulk_bear, model_in_use_narrow_bull, model_in_use_narrow_bear, model_in_use_wide_bear, model_in_use_wide_bull, model_in_use_short_bear, model_in_use_short_bull
-import xgboost as xgb
+from tradparams import unfilled_order_lifespan_min, hours_before_repeat_order
+from tradparams import percs, special_percs, used_timeframes, ranges, directions, modes, initial_preds
+from tradparams import xgb
 import copy
 from numpy import ndarray,corrcoef
 
 maxtry = 10
-scores = {}
 present_times = {}
-candles = {}
-base_sums = {}
-base_sum_supports = {}
-elements = {}
+treatments_returns = {}
 last_orders = {}
 start_of_friday = None
 end_of_sunday = None
-model_bull_wide = None
-model_bear_wide = None
-model_bull_narrow = None
-model_bear_narrow = None
-model_bull_short =  None
-model_bear_short =  None
-model_bull_inter =  None
-model_bear_inter =  None
-model_bull_bulk =  None
-model_bear_bulk =  None
 iteration_time = datetime.now()
-correlations = []
+first = True
 
-
-def calculate_candlestick_score_realtime(symbol, last_candle, meanperiod=mperiod, new=True):
+def calculate_candlestick_score_realtime(symbol, last_candle, base_sum_supports, base_sums, meanperiod=mperiod, new=True):
     """
     Calcule le score de la dernière bougie dans un ensemble de données de bougies d'une heure sur 24h.
 
@@ -93,7 +79,7 @@ def calculate_candlestick_score_realtime(symbol, last_candle, meanperiod=mperiod
             score = score[0]
     return score
 
-def load_candles(symbol, back_period=mperiod):
+def load_candles(symbol, timeframe, back_period=mperiod):
     """
     Charge les chandeliers d'un symbole donné à partir du début d'une année spécifiée jusqu'à aujourd'hui.
 
@@ -108,7 +94,7 @@ def load_candles(symbol, back_period=mperiod):
     k = 0
     while not ok:
         # Télécharger les chandeliers
-        cands = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, back_period)  # Exemple TIMEFRAME_D1 pour des chandeliers quotidiens
+        cands = mt5.copy_rates_from_pos(symbol, timeframe, 0, back_period)  # Exemple TIMEFRAME_D1 pour des chandeliers quotidiens
 
         if cands is not None:
             if type(cands) == ndarray:
@@ -127,7 +113,7 @@ def load_candles(symbol, back_period=mperiod):
     return cands
 
 
-def load_candle(symbol):
+def load_candle(symbol, candles, scores, base_sum_supports, base_sums, timeframe):
     # Initialiser MetaTrader5
     init_metatrader_connexion()
 
@@ -136,7 +122,7 @@ def load_candle(symbol):
     candle = None
     while not ok:
         # Télécharger les chandeliers
-        candle = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, 1)
+        candle = mt5.copy_rates_from_pos(symbol, timeframe, 0, 1)
         if candle is not None:
             if type(candle) == ndarray:
                 ok = True
@@ -168,15 +154,15 @@ def load_candle(symbol):
     # Vérifier si la bougie est nouvelle ou une mise à jour
     if last_candle_time is None:
         #print("Première vérification : Bougie actuelle chargée.")
-        candles[symbol] = deque(candle)
-        scores[symbol] = deque(calculate_candlestick_score_realtime(symbol, candle))
+        candles[symbol] = deque([candle])
+        scores[symbol] = deque([calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums)])
         present_times[symbol] = t
     elif current_candle_time > last_candle_time:
         #print(f"Nouvelle bougie détectée : {datetime.fromtimestamp(current_candle_time)}")
         if type(candles[symbol]) == ndarray:
             candles[symbol] = deque(candles[symbol])
         candles[symbol].append(candle)
-        scores[symbol].append(calculate_candlestick_score_realtime(symbol, candle))
+        scores[symbol].append(calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums))
         present_times[symbol] = t
         if len(scores[symbol]) > period:
             scores[symbol].popleft()
@@ -188,67 +174,33 @@ def load_candle(symbol):
         candles[symbol].pop()
         candles[symbol].append(candle)
         scores[symbol].pop()
-        new = calculate_candlestick_score_realtime(symbol, candle, new=False)
+        new = calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums, new=False)
         scores[symbol].append(new)
         present_times[symbol] = t
 
     close_metatrader_connexion()
     return scores[symbol]
 
-def load_model(model_name):
-    # Load the model from the file
-    loaded_model = xgb.Booster()
-    loaded_model.load_model(model_name)
-    return loaded_model
 
-def init_models():
-    #global model_bull_wide
-    #global model_bear_wide
-    global model_bull_narrow
-    global model_bear_narrow
-    global model_bull_short
-    global model_bear_short
-    global model_bull_inter
-    global model_bear_inter
-    global model_bull_bulk
-    global model_bear_bulk
-    #model_bull_wide = load_model(model_in_use_wide_bull)
-    #model_bear_wide = load_model(model_in_use_wide_bear)
-    model_bull_narrow = load_model(model_in_use_narrow_bull)
-    model_bear_narrow = load_model(model_in_use_narrow_bear)
-    model_bull_short  = load_model(model_in_use_short_bull)
-    model_bear_short  = load_model(model_in_use_short_bear)
-    model_bull_inter  = load_model(model_in_use_inter_bull)
-    model_bear_inter  = load_model(model_in_use_inter_bear)
-    model_bull_bulk   = load_model(model_in_use_bulk_bull)
-    model_bear_bulk   = load_model(model_in_use_bulk_bear)
-
-def init_env():
-    global candles
-    global scores
-    scores = {}
-    candles = {}
-
+def init_env(timeframe, candles, scores, base_sum_supports, base_sums):
     t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for x in pseudos:
-        candles[pseudos[x]] = load_candles(pseudos[x])
+        candles[pseudos[x]] = load_candles(pseudos[x], timeframe=timeframe)
         scores[pseudos[x]] = deque()
         for i in range(0, period):
             scores[pseudos[x]].append(
-                calculate_candlestick_score_realtime(pseudos[x], candles[pseudos[x]][mperiod - period + i])
+                calculate_candlestick_score_realtime(pseudos[x], candles[pseudos[x]][mperiod - period + i], base_sum_supports, base_sums)
             )
             present_times[pseudos[x]] = t
-ele = None
-def load_element(symbol):
+
+def load_element(symbol, scores):
     myn = minute_in_year_normalization(present_times[symbol])
     ele = scores[symbol].copy()
     ele.appendleft(myn)
     #print(f"ele size = {len(ele)}")
     return [list(ele)]
 
-
-
-def apply_model(model,element):
+def apply_model(model, element):
     dtest = xgb.DMatrix(element)
     # Faire une prédiction
     preds = model.predict(dtest)
@@ -263,10 +215,10 @@ def apply_model(model,element):
     '''
     return preds
 
-def get_pred(bull_pred, bear_pred, scale, keyword):
-    if   bull_pred > dashboard[f'bull_binary_{scale}_{keyword}'] and bear_pred <= dashboard[f'bear_binary_{scale}_{keyword}']:
+def get_pred(bull_pred, bear_pred, scale, keyword, prob_limits, rev=False):
+    if   bull_pred > prob_limits[f'bull_binary_{scale}_{'rev_' * rev}{keyword}'] and bear_pred <= prob_limits[f'bear_binary_{scale}_{keyword}']:
         pred = 2
-    elif bear_pred > dashboard[f'bear_binary_{scale}_{keyword}'] and bull_pred <= dashboard[f'bull_binary_{scale}_{keyword}']:
+    elif bear_pred > prob_limits[f'bear_binary_{scale}_{keyword}'] and bull_pred <= prob_limits[f'bull_binary_{scale}_{'rev_' *  rev}{keyword}']:
         pred = 0
     else:
         pred = 1
@@ -322,8 +274,6 @@ def check_open_positions(symbol):
     #    return True
     else:
         return False
-
-import MetaTrader5 as mt5
 
 def cancel_unfilled_orders(symbol):
     """
@@ -424,253 +374,236 @@ def get_active_symbols():
     # Return the unique symbols as a list
     return list(symbols)
 
-def correlated(symbol, ele):
+def correlated(symbol, ele, scores):
     for op in get_active_symbols():
         if op != symbol:
-            if corr(ele, load_element(op)) > limit_correlation:
-                print(f"correlation {op} and {symbol} ==> {corr(ele, load_element(op))}")
+            if corr(ele, load_element(op, scores)) > limit_correlation:
+                print(f"correlation {op} and {symbol} ==> {corr(ele, load_element(op, scores))}")
                 return True
     return False
 
-def is_in_last_30_seconds_of_hour():
+def is_in_last_seconds_of_x_minutes(x):
     now = datetime.now()
-    return now.minute == 59 and now.second >= 30
+    y = 60 * now.hour + now.minute
+    return y % x == x - 1 or y % x == x - 2
 
-pred = 1
-pred_ = 1
-pred_rev = 1
-pred_rev_ = 1
+def set_primary_preds(symbol : str, preds : dict, models : dict, ele : list, direction : str, rang : str, rev : bool):
+    for x in directions:
+        if x != direction:
+            codirection = x
+    preds[symbol][f"pred_{'rev_' * rev}{direction}_{rang}"] = apply_model(models[f'model_{direction * (not rev)}{codirection * rev}_{rang}'], ele)[0]
 
-pred_bull_bulk = 0
-pred_bull_narrow = 0
-pred_bull_inter = 0
-pred_bull_short = 0
-pred_bear_bulk = 0
-pred_bear_narrow = 0
-pred_bear_inter = 0
-pred_bear_short = 0
-pred_narrow = 0
-pred_short = 0
-pred_inter = 0
-pred_bulk = 0
-pred_narrow_ = 0
-pred_short_ = 0
-pred_inter_ = 0
-pred_bulk_ = 0
-pred_rev_bear_bulk = 0
-pred_rev_bear_narrow = 0
-pred_rev_bear_inter = 0
-pred_rev_bear_short = 0
-pred_rev_bull_bulk = 0
-pred_rev_bull_narrow = 0
-pred_rev_bull_inter = 0
-pred_rev_bull_short = 0
-pred_rev_narrow = 0
-pred_rev_short = 0
-pred_rev_inter = 0
-pred_rev_bulk = 0
-pred_rev_narrow_ = 0
-pred_rev_short_ = 0
-pred_rev_inter_ = 0
-pred_rev_bulk_ = 0
+def set_secondary_preds(symbol : str, preds : dict, mode : str, rang : str, prob_limits : dict, rev : bool):
+    preds[symbol][f"pred_{'rev_' * rev}{rang}{(mode=='comb') * '_'}"] = get_pred(preds[symbol][f"pred_{'rev_' * rev}{'bull' * (not rev)}{'bear' * rev}_{rang}"], preds[symbol][f"pred_{'rev_' * rev}{'bull' * rev}{'bear' * (not rev)}_{rang}"] , rang, mode, prob_limits, rev)
 
-initial_preds = {
-    "pred_bull_bulk" : 0,
-    "pred_bull_narrow" : 0,
-    "pred_bull_inter" : 0,
-    "pred_bull_short" : 0,
-    "pred_bear_bulk" : 0,
-    "pred_bear_narrow" : 0,
-    "pred_bear_inter" : 0,
-    "pred_bear_short" : 0,
-    "pred_narrow" : 0,
-    "pred_short" : 0,
-    "pred_inter" : 0,
-    "pred_bulk" : 0,
-    "pred_narrow_" : 0,
-    "pred_short_" : 0,
-    "pred_inter_" : 0,
-    "pred_bulk_" : 0,
-    "pred_rev_bear_bulk" : 0,
-    "pred_rev_bear_narrow" : 0,
-    "pred_rev_bear_inter" : 0,
-    "pred_rev_bear_short" : 0,
-    "pred_rev_bull_bulk" : 0,
-    "pred_rev_bull_narrow" : 0,
-    "pred_rev_bull_inter" : 0,
-    "pred_rev_bull_short" : 0,
-    "pred_rev_narrow" : 0,
-    "pred_rev_short" : 0,
-    "pred_rev_inter" : 0,
-    "pred_rev_bulk" : 0,
-    "pred_rev_narrow_" : 0,
-    "pred_rev_short_" : 0,
-    "pred_rev_inter_" : 0,
-    "pred_rev_bulk_" : 0,
-    "pred" : 1,
-    "pred_" : 1,
-    "pred_rev" : 1,
-    "pred_rev_" : 1
-}
 
-first = True
-preds = {}
+def set_preds(symbol : str, preds : dict, models : dict, ele : list,  prob_limits : dict, scores : dict):
+    opele = [[-x for x in ele[0]]]
+    for direction in directions:
+        for rang in ranges:
+            set_primary_preds(symbol, preds, models, ele, direction, rang, False)
+            set_primary_preds(symbol, preds, models, opele, direction, rang, True)
+
+    for mode in modes:
+        for rang in ranges:
+            set_secondary_preds(symbol, preds, mode, rang, prob_limits, False)
+            set_secondary_preds(symbol, preds, mode, rang, prob_limits, True)
+
+
+    preds[symbol]["pred"] = None
+    if      (preds[symbol]["pred_short"] == 2 or preds[symbol]["pred_inter"] == 2) and (preds[symbol]["pred_narrow"] == 2 or preds[symbol]["pred_bulk"] == 2 ):
+        preds[symbol]["pred"] = 2
+    elif    preds[symbol]["pred_short"] == 0  and (preds[symbol]["pred_narrow"] < 2 and preds[symbol]["pred_bulk"] < 2 and preds[symbol]["pred_inter"] < 2):
+        preds[symbol]["pred"] = 0
+    else:
+        preds[symbol]["pred"] = 1
+
+    preds[symbol]["pred_"] = None
+    if      preds[symbol]["pred_narrow_"] == 2 and preds[symbol]["pred_short_"] == 2 and preds[symbol]["pred_inter_"] == 2 and preds[symbol]["pred_bulk_"] == 2:
+        preds[symbol]["pred_"] = 2
+    elif    preds[symbol]["pred_short_"] == 0 and preds[symbol]["pred_bulk_"] == 0 and preds[symbol]["pred_narrow"] < 2 and preds[symbol]["pred_inter"] < 2:
+        preds[symbol]["pred_"] = 0
+    else:
+        preds[symbol]["pred_"] = 1
+
+    preds[symbol]["pred_rev"] = None
+    if      (preds[symbol]["pred_rev_short"] == 2 or preds[symbol]["pred_rev_inter"] == 2) and (preds[symbol]["pred_rev_narrow"] == 2 or preds[symbol]["pred_rev_bulk"] == 2 ):
+        preds[symbol]["pred_rev"] = 0
+    elif    preds[symbol]["pred_rev_short"] == 0  and (preds[symbol]["pred_rev_narrow"] < 2 and preds[symbol]["pred_rev_bulk"] < 2 and preds[symbol]["pred_rev_inter"] < 2):
+        preds[symbol]["pred_rev"] = 1
+    else:
+        preds[symbol]["pred_rev"] = 1
+
+    preds[symbol]["pred_rev_"] = None
+    if      preds[symbol]["pred_rev_narrow_"] == 2 and preds[symbol]["pred_rev_short_"] == 2 and preds[symbol]["pred_rev_inter_"] == 2 and preds[symbol]["pred_rev_bulk_"] == 2:
+        preds[symbol]["pred_rev_"] = 0
+    elif    preds[symbol]["pred_rev_short_"] == 0 and preds[symbol]["pred_rev_bulk_"] == 0 and preds[symbol]["pred_rev_narrow"] < 2 and preds[symbol]["pred_rev_inter"] < 2:
+        preds[symbol]["pred_rev_"] = 2
+    else:
+        preds[symbol]["pred_rev_"] = 1
+
+
+    return f"{symbol[:6]} {str(preds[symbol]["pred"] )} {str(preds[symbol]["pred_bulk"] )+str(preds[symbol]["pred_narrow"] )+str(preds[symbol]["pred_inter"] )+str(preds[symbol]["pred_short"] )} - {str(preds[symbol]["pred_"] )} {str(preds[symbol]["pred_bulk_"] )+str(preds[symbol]["pred_narrow_"] )+str(preds[symbol]["pred_inter_"] )+str(preds[symbol]["pred_short_"] )} | {str(preds[symbol]["pred_rev"])} {str(preds[symbol]["pred_rev_bulk"] )+str(preds[symbol]["pred_rev_narrow"] )+str(preds[symbol]["pred_rev_inter"] )+str(preds[symbol]["pred_rev_short"] )} - {str(preds[symbol]["pred_rev_"] )} {str(preds[symbol]["pred_rev_bulk_"] )+str(preds[symbol]["pred_rev_narrow_"] )+str(preds[symbol]["pred_rev_inter_"] )+str(preds[symbol]["pred_rev_short_"] )}: {scores[symbol][-1]}"
+
+def execute_order(preds, symbol, ele, scores, timeframe_pseudo='h'):
+    global last_orders
+    if symbol not in last_orders:
+        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if check_pending_orders(symbol):
+        if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
+            cancel_unfilled_orders(symbol)
+        else:
+            return -1
+
+    if ((preds[symbol]["pred"] == 2 or preds[symbol]["pred_"] == 2) and (preds[symbol]["pred_rev"] > 0 and preds[symbol]["pred_rev_"] > 0)) or ((preds[symbol]["pred_rev"] == 2 or preds[symbol]["pred_rev_"] == 2) and (preds[symbol]["pred"] > 0 and preds[symbol]["pred_"] > 0)):
+        if check_open_positions(symbol):
+            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
+                return -1
+        if correlated(symbol, ele, scores):
+            return -1
+        so(
+            symbol      =   symbol,
+            ordertype   =   order_types_[0],
+            volume      =   None,
+            price       =   None,
+            delta_timeframe_pair = delta_timeframe_pair_pseudos[timeframe_pseudo]
+        )
+        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    elif (
+        (preds[symbol]["pred"] == 0 or preds[symbol]["pred_"] == 0) 
+        and (preds[symbol]["pred_rev"] < 2 and preds[symbol]["pred_rev_"] < 2)
+        ) or (
+            (preds[symbol]["pred_rev"] == 0 or preds[symbol]["pred_rev_"] == 0) and 
+            (preds[symbol]["pred"] < 2 and preds[symbol]["pred_"] < 2)
+        ):
+        if check_open_positions(symbol):
+            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
+                return -1
+        if correlated(symbol, ele, scores):
+            return -1
+        so(
+            symbol      =   symbol,
+            ordertype   =   order_types_[1],
+            volume      =   None,
+            price       =   None,
+            delta_timeframe_pair = delta_timeframe_pair_pseudos[timeframe_pseudo]
+        )
+        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return 0
+
+
+def init_op_dict():
+    global percs, special_percs
+    opd = {}
+    for timeframe_pseudo in used_timeframes:
+        i_opd = {}
+        for p in percs:
+            if p in special_percs[timeframe_pseudo]:
+                i_opd[p] = special_percs[timeframe_pseudo][p]
+            else:
+                i_opd[p] = {}
+        opd[timeframe_pseudo] = i_opd
+    return opd
+
+def load_model(model_name):
+    # Load the model from the file
+    loaded_model = xgb.Booster()
+    loaded_model.load_model(model_name)
+    return loaded_model
+
+operating_dicts = {}
+def init_models(
+        timeframe_pseudo,
+        prediction_period, 
+        mean_period,
+        learning_rate, 
+        percentile,
+        modelfile_extension
+    ):
+    global operating_dicts
+    models = {}
+
+    if timeframe_pseudo not in models:
+        models[timeframe_pseudo] = {}
+    for r in ranges:
+        for d in directions:
+            key = f'model_{d}_{r}'
+            model_in_use = f"M{prediction_period}_{mean_period}_{learning_rate}_{percentile}_{d}_{r}_{ranges_equi[r]}{f'_{timeframe_pseudo}'*(timeframe_pseudo != 'h')}{modelfile_extension}"
+            print(model_in_use)
+            models[timeframe_pseudo][key] = load_model(model_in_use)
+
+    operating_dicts[timeframe_pseudo]['models'] = models[timeframe_pseudo]
+
+
+def treatment(x, pse, timeframe_pseudo):
+    global first, treatments_returns, iteration_time, operating_dicts
+    if datetime.now() - iteration_time > timedelta(minutes=delta_timeframe_pair_pseudos[timeframe_pseudo][2]):
+        init_env(
+            delta_timeframe_pair_pseudos[timeframe_pseudo][1],
+            operating_dicts[timeframe_pseudo]['candles'],
+            operating_dicts[timeframe_pseudo]['scores'],
+            operating_dicts[timeframe_pseudo]['base_sum_supports'],
+            operating_dicts[timeframe_pseudo]['base_sums']
+        )
+    ele = None
+    if is_in_last_seconds_of_x_minutes(delta_timeframe_pair_pseudos[timeframe_pseudo][2]) or first == True:
+        if x == next(iter(pse.items()))[0]:
+            print("================================================================")
+        if pse[x] not in operating_dicts[timeframe_pseudo]['preds']:
+            operating_dicts[timeframe_pseudo]['preds'][pse[x]] = copy.deepcopy(initial_preds)
+        load_candle(pse[x], operating_dicts[timeframe_pseudo]['candles'], operating_dicts[timeframe_pseudo]['scores'], operating_dicts[timeframe_pseudo]['base_sum_supports'], operating_dicts[timeframe_pseudo]['base_sums'], timeframe=delta_timeframe_pair_pseudos[timeframe_pseudo][1])
+        ele = load_element(pse[x], operating_dicts[timeframe_pseudo]['scores'])
+        if pse[x] not in treatments_returns:
+            treatments_returns[pse[x]] = {}
+        if timeframe_pseudo not in treatments_returns[pse[x]]:
+            treatments_returns[pse[x]][timeframe_pseudo] = {}
+        treatments_returns[pse[x]][timeframe_pseudo]['res'] = set_preds(pse[x], operating_dicts[timeframe_pseudo]['preds'], operating_dicts[timeframe_pseudo]['models'], ele, operating_dicts[timeframe_pseudo]['prob_limits'], operating_dicts[timeframe_pseudo]['scores'])    
+        print(f"{treatments_returns[pse[x]][timeframe_pseudo]['res']}")
+    
+    if ele:
+        treatments_returns[pse[x]][timeframe_pseudo]['r'] = execute_order(operating_dicts[timeframe_pseudo]['preds'], pse[x], ele, operating_dicts[timeframe_pseudo]['scores'], timeframe_pseudo)
+
 
 def loop():
-    global initial_preds
-    global iteration_time
+    global iteration_time, operating_dicts
     global first
-    global preds
-    global ele
-    if datetime.now() - iteration_time > timedelta(hours=1):
-        init_env()
+
     pse = None
     if is_weekend():
-        pse = pseudos_we # pseudos_we
+        pse = pseudos_we
     else:
         pse = pseudos
 
-    
     for x in pse:
-        if is_in_last_30_seconds_of_hour() or first == True:
-            if pseudos[x] == 'EURUSD':
-                print("=============================================================")
-            if pseudos[x] not in preds:
-                preds[pseudos[x]] = copy.deepcopy(initial_preds)
-            load_candle(pseudos[x])
-            ele = load_element(pseudos[x])
-            #if pseudos[x][:6] == 'BTCUSD':
-            #    print(ele)
-            #preds[pseudos[x]]["pred_bull_wide"]     = apply_model(model_bull_wide,    ele)[0]
-            #preds[pseudos[x]]["pred_bear_wide"]     = apply_model(model_bear_wide,    ele)[0]
-            preds[pseudos[x]]["pred_bull_bulk"]      = apply_model(model_bull_bulk,    ele)[0]
-            preds[pseudos[x]]["pred_bull_narrow"]    = apply_model(model_bull_narrow,  ele)[0]
-            preds[pseudos[x]]["pred_bull_inter"]     = apply_model(model_bull_inter,   ele)[0]
-            preds[pseudos[x]]["pred_bull_short"]     = apply_model(model_bull_short,   ele)[0]
+        for timeframe_pseudo in used_timeframes:
+            treatment(x, pse, timeframe_pseudo)
 
-            preds[pseudos[x]]["pred_bear_bulk"]      = apply_model(model_bear_bulk,    ele)[0]
-            preds[pseudos[x]]["pred_bear_narrow"]    = apply_model(model_bear_narrow,  ele)[0]
-            preds[pseudos[x]]["pred_bear_inter"]     = apply_model(model_bear_inter,   ele)[0]
-            preds[pseudos[x]]["pred_bear_short"]     = apply_model(model_bear_short,   ele)[0]
-
-            #preds[pseudos[x]]["pred_wide"]          = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'threshold')
-            preds[pseudos[x]]["pred_narrow"]         = get_pred(preds[pseudos[x]]["pred_bull_narrow"] ,    preds[pseudos[x]]["pred_bear_narrow"] , 'narrow', 'threshold')
-            preds[pseudos[x]]["pred_short"]          = get_pred(preds[pseudos[x]]["pred_bull_short"] ,     preds[pseudos[x]]["pred_bear_short"] , 'short', 'threshold')
-            preds[pseudos[x]]["pred_inter"]          = get_pred(preds[pseudos[x]]["pred_bull_inter"] ,     preds[pseudos[x]]["pred_bear_inter"] , 'inter', 'threshold')
-            preds[pseudos[x]]["pred_bulk"]           = get_pred(preds[pseudos[x]]["pred_bull_bulk"] ,      preds[pseudos[x]]["pred_bear_bulk"] , 'bulk', 'threshold')
-
-            #preds[pseudos[x]]["pred_wide_"] = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'comb')
-            preds[pseudos[x]]["pred_narrow_"]        = get_pred(preds[pseudos[x]]["pred_bull_narrow"] ,    preds[pseudos[x]]["pred_bear_narrow"] , 'narrow', 'comb')
-            preds[pseudos[x]]["pred_short_"]         = get_pred(preds[pseudos[x]]["pred_bull_short"] ,     preds[pseudos[x]]["pred_bear_short"] , 'short', 'comb')
-            preds[pseudos[x]]["pred_inter_"]         = get_pred(preds[pseudos[x]]["pred_bull_inter"] ,     preds[pseudos[x]]["pred_bear_inter"] , 'inter', 'comb')
-            preds[pseudos[x]]["pred_bulk_"]          = get_pred(preds[pseudos[x]]["pred_bull_bulk"] ,      preds[pseudos[x]]["pred_bear_bulk"] , 'bulk', 'comb')
-
-            opele = [[-x for x in ele[0]]]
-            preds[pseudos[x]]["pred_rev_bear_bulk"]  = apply_model(model_bull_bulk,   opele)[0]
-            preds[pseudos[x]]["pred_rev_bear_narrow"] = apply_model(model_bull_narrow, opele)[0]
-            preds[pseudos[x]]["pred_rev_bear_inter"] = apply_model(model_bull_inter,  opele)[0]
-            preds[pseudos[x]]["pred_rev_bear_short"] = apply_model(model_bull_short,  opele)[0]
-
-            preds[pseudos[x]]["pred_rev_bull_bulk"]  = apply_model(model_bear_bulk,   opele)[0]
-            preds[pseudos[x]]["pred_rev_bull_narrow"]= apply_model(model_bear_narrow, opele)[0]
-            preds[pseudos[x]]["pred_rev_bull_inter"] = apply_model(model_bear_inter,  opele)[0]
-            preds[pseudos[x]]["pred_rev_bull_short"] = apply_model(model_bear_short,  opele)[0]
-
-            #preds[pseudos[x]]["pred_wide"]          = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'threshold')
-            preds[pseudos[x]]["pred_rev_narrow"]     = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_narrow"] , preds[pseudos[x]]["pred_rev_bull_narrow"] , 'narrow', 'threshold')
-            preds[pseudos[x]]["pred_rev_short"]      = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_short"] , preds[pseudos[x]]["pred_rev_bull_short"] , 'short', 'threshold')
-            preds[pseudos[x]]["pred_rev_inter"]      = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_inter"] , preds[pseudos[x]]["pred_rev_bull_inter"] , 'inter', 'threshold')
-            preds[pseudos[x]]["pred_rev_bulk"]       = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_bulk"] , preds[pseudos[x]]["pred_rev_bull_bulk"] , 'bulk', 'threshold')
-
-            #preds[pseudos[x]]["pred_wide_"] = get_pred(preds[pseudos[x]]["pred_bull_wide"] , preds[pseudos[x]]["pred_bear_wide"] , 'wide', 'comb')
-            preds[pseudos[x]]["pred_rev_narrow_"]    = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_narrow"] , preds[pseudos[x]]["pred_rev_bull_narrow"] , 'narrow', 'comb')
-            preds[pseudos[x]]["pred_rev_short_"]     = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_short"] , preds[pseudos[x]]["pred_rev_bull_short"] , 'short', 'comb')
-            preds[pseudos[x]]["pred_rev_inter_"]     = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_inter"] , preds[pseudos[x]]["pred_rev_bull_inter"] , 'inter', 'comb')
-            preds[pseudos[x]]["pred_rev_bulk_"]      = get_pred_rev(preds[pseudos[x]]["pred_rev_bear_bulk"] , preds[pseudos[x]]["pred_rev_bull_bulk"] , 'bulk', 'comb')
-
-            preds[pseudos[x]]["pred"] = None
-            if      (preds[pseudos[x]]["pred_short"] == 2 or preds[pseudos[x]]["pred_inter"] == 2) and (preds[pseudos[x]]["pred_narrow"] == 2 or preds[pseudos[x]]["pred_bulk"] == 2 ):
-                preds[pseudos[x]]["pred"] = 2
-            elif    preds[pseudos[x]]["pred_short"] == 0  and (preds[pseudos[x]]["pred_narrow"] < 2 and preds[pseudos[x]]["pred_bulk"] < 2 and preds[pseudos[x]]["pred_inter"] < 2):
-                preds[pseudos[x]]["pred"] = 0
-            else:
-                preds[pseudos[x]]["pred"] = 1
-
-            preds[pseudos[x]]["pred_"] = None
-            if      preds[pseudos[x]]["pred_narrow_"] == 2 and preds[pseudos[x]]["pred_short_"] == 2 and preds[pseudos[x]]["pred_inter_"] == 2 and preds[pseudos[x]]["pred_bulk_"] == 2:
-                preds[pseudos[x]]["pred_"] = 2
-            elif    preds[pseudos[x]]["pred_short_"] == 0 and preds[pseudos[x]]["pred_bulk_"] == 0 and preds[pseudos[x]]["pred_narrow"] < 2 and preds[pseudos[x]]["pred_inter"] < 2:
-                preds[pseudos[x]]["pred_"] = 0
-            else:
-                preds[pseudos[x]]["pred_"] = 1
-
-            preds[pseudos[x]]["pred_rev"] = None
-            if      (preds[pseudos[x]]["pred_rev_short"] == 2 or preds[pseudos[x]]["pred_rev_inter"] == 2) and (preds[pseudos[x]]["pred_rev_narrow"] == 2 or preds[pseudos[x]]["pred_rev_bulk"] == 2 ):
-                preds[pseudos[x]]["pred_rev"] = 0
-            elif    preds[pseudos[x]]["pred_rev_short"] == 0  and (preds[pseudos[x]]["pred_rev_narrow"] < 2 and preds[pseudos[x]]["pred_rev_bulk"] < 2 and preds[pseudos[x]]["pred_rev_inter"] < 2):
-                preds[pseudos[x]]["pred_rev"] = 1
-            else:
-                preds[pseudos[x]]["pred_rev"] = 1
-
-            preds[pseudos[x]]["pred_rev_"] = None
-            if      preds[pseudos[x]]["pred_rev_narrow_"] == 2 and preds[pseudos[x]]["pred_rev_short_"] == 2 and preds[pseudos[x]]["pred_rev_inter_"] == 2 and preds[pseudos[x]]["pred_rev_bulk_"] == 2:
-                preds[pseudos[x]]["pred_rev_"] = 0
-            elif    preds[pseudos[x]]["pred_rev_short_"] == 0 and preds[pseudos[x]]["pred_rev_bulk_"] == 0 and preds[pseudos[x]]["pred_rev_narrow"] < 2 and preds[pseudos[x]]["pred_rev_inter"] < 2:
-                preds[pseudos[x]]["pred_rev_"] = 2
-            else:
-                preds[pseudos[x]]["pred_rev_"] = 1
-            
-
-            print(f"{pseudos[x][:6]} {str(preds[pseudos[x]]["pred"] )} {str(preds[pseudos[x]]["pred_bulk"] )+str(preds[pseudos[x]]["pred_narrow"] )+str(preds[pseudos[x]]["pred_inter"] )+str(preds[pseudos[x]]["pred_short"] )} - {str(preds[pseudos[x]]["pred_"] )} {str(preds[pseudos[x]]["pred_bulk_"] )+str(preds[pseudos[x]]["pred_narrow_"] )+str(preds[pseudos[x]]["pred_inter_"] )+str(preds[pseudos[x]]["pred_short_"] )} | {str(pred_rev)} {str(preds[pseudos[x]]["pred_rev_bulk"] )+str(preds[pseudos[x]]["pred_rev_narrow"] )+str(preds[pseudos[x]]["pred_rev_inter"] )+str(preds[pseudos[x]]["pred_rev_short"] )} - {str(preds[pseudos[x]]["pred_rev_"] )} {str(preds[pseudos[x]]["pred_rev_bulk_"] )+str(preds[pseudos[x]]["pred_rev_narrow_"] )+str(preds[pseudos[x]]["pred_rev_inter_"] )+str(preds[pseudos[x]]["pred_rev_short_"] )}: {scores[pseudos[x]][-1]}")
-
-        if pseudos[x] not in last_orders:
-            last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        if check_pending_orders(pseudos[x]):
-            if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
-                cancel_unfilled_orders(pseudos[x])
-            else:
-                continue
-
-        if ((preds[pseudos[x]]["pred"] == 2 or preds[pseudos[x]]["pred_"] == 2) and (preds[pseudos[x]]["pred_rev"] > 0 and preds[pseudos[x]]["pred_rev_"] > 0)) or ((preds[pseudos[x]]["pred_rev"] == 2 or preds[pseudos[x]]["pred_rev_"] == 2) and (preds[pseudos[x]]["pred"] > 0 and preds[pseudos[x]]["pred_"] > 0)):
-            if check_open_positions(pseudos[x]):
-                if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                    continue
-            if correlated(pseudos[x], ele):
-                continue
-            so(
-                symbol      =   pseudos[x],
-                ordertype   =   order_types_[0],
-                volume      =   None,
-                price       =   None,
-                delta_timeframe_pair = delta_timeframe_pair_pseudos['h']
-            )
-            last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        elif ((preds[pseudos[x]]["pred"] == 0 or preds[pseudos[x]]["pred_"] == 0) and (preds[pseudos[x]]["pred_rev"] < 2 and preds[pseudos[x]]["pred_rev_"] < 2)) or ((preds[pseudos[x]]["pred_rev"] == 0 or preds[pseudos[x]]["pred_rev_"] == 0) and (preds[pseudos[x]]["pred"] < 2 and preds[pseudos[x]]["pred_"] < 2)):
-            if check_open_positions(pseudos[x]):
-                if datetime.now() - datetime.strptime(last_orders[pseudos[x]], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                    continue
-            if correlated(pseudos[x], ele):
-                continue
-            so(
-                symbol      =   pseudos[x],
-                ordertype   =   order_types_[1],
-                volume      =   None,
-                price       =   None,
-                delta_timeframe_pair = delta_timeframe_pair_pseudos['h']
-            )
-            last_orders[pseudos[x]] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            pass
     iteration_time = datetime.now()
     first = False
-    sleep(15)
-    
+    sleep(30)
 
 def main():
-    init_models()
-    init_env()
+    global operating_dicts
+    operating_dicts = init_op_dict()
+    for timeframe_pseudo in used_timeframes:
+        init_models(
+            timeframe_pseudo,
+            prediction_period, 
+            mean_period,
+            learning_rate,
+            percentile,
+            modelfile_extension  
+        )
+        init_env(
+            delta_timeframe_pair_pseudos[timeframe_pseudo][1],
+            operating_dicts[timeframe_pseudo]['candles'],
+            operating_dicts[timeframe_pseudo]['scores'],
+            operating_dicts[timeframe_pseudo]['base_sum_supports'],
+            operating_dicts[timeframe_pseudo]['base_sums']
+        )
     while (True):
         loop()
 
