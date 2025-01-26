@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 from pandas import read_csv
-from tradparams import mean_period, to_float, pseudos
+from tradparams import mperiod, to_float, pseudos
 import tradautotools as ta
 from collections import deque
 
 base_sum_support = deque()
 base_sum = 0
 
-def calculate_candlestick_score(last_candle, number_of_prediction_candlesticks=24 * mean_period, new=True):
+def calculate_candlestick_score(last_candle, number_of_prediction_candlesticks=mperiod, new=True):
     global base_sum
     global base_sum_support
     """

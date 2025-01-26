@@ -3,15 +3,16 @@
 
 import tradlearnXGBoost as x
 import argparse
-from tradparams import modes, trends, extensions, learning_rate, learning_trend, mode, modelfile_extension
+from tradparams import delta_timeframe_pair_pseudos, modes, trends, extensions, learning_rate, learning_trend, mode, modelfile_extension
 
 def main(
+    timeframe_pseudo, 
     learningrate,
     trend,
     mode,
     extension
 ):
-    x.test_model(learningrate=learningrate, trend=trend, mode=mode,extension=extension)
+    x.test_model(timeframe_pseudo, learningrate=learningrate, trend=trend, mode=mode,extension=extension)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Test the model')
@@ -42,7 +43,7 @@ if __name__ == '__main__':
         default=mode,
         choices = modes
     )
-
+    # timeframe_pseudo
     parser.add_argument(
         "-e",
         "--extension",
@@ -51,9 +52,18 @@ if __name__ == '__main__':
         choices = extensions
     )
 
+    parser.add_argument(
+        "-p",
+        "--timeframepseudo",
+        help="Timeframe pseudo",
+        choices = delta_timeframe_pair_pseudos.keys(),
+        required=True
+    )
+
     args = parser.parse_args()
 
     main(
+        timeframe_pseudo=args.timeframepseudo,
         trend=args.trend,
         mode=args.mode,
         learningrate=args.learningrate,

@@ -16,7 +16,7 @@ import argparse
 from scipy.sparse import csr_matrix
 import xgboost as xgb
 from collections import deque
-from tradparams import initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, certitude_degree_of_categorization, testnum, period, folder, mode
+from tradparams import delta_timeframe_pair_pseudos, initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, testnum, period, folder, mode
 
 
 def xdump(model,filepath):
@@ -32,8 +32,7 @@ def xload(filepath):
 num_features = period - testnum + 1
 batch_size = 32  # À ajuster selon les performances de votre machine
 test_split_ratio = 0.2
-train_split_ratio = 0.75
-cert_deg = certitude_degree_of_categorization
+train_split_ratio = 1.
 epsilon = 0.001
 last_epsilon = 0.000001
 
@@ -334,18 +333,18 @@ Prediction label period = {testnum * narfact}\n
 
         calculate_accuracy(bst,dtest,y_test,mode,learningrate,trend,final_threshold)
 
-def test_model(learningrate=learning_rate, trend=learning_trend, mode=mode,extension=modelfile_extension, test_extension=testfile_extension):
+def test_model(timeframe_pseudo, learningrate=learning_rate, trend=learning_trend, mode=mode,extension=modelfile_extension, test_extension=testfile_extension):
     # Make predictions
     # Load the model from the file
     narfact = mode_to_narfact(mode)
 
-    model_name = f"model_data/M{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
+    model_name = f"model_data/M{timeframe_pseudo}_{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
     bst = xload(model_name)
 
     print(f"model {model_name} successfully loaded.")
 
     # Load DMatrix
-    csv_name = f'test_data/dtest{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
+    csv_name = f'test_data/dtest{timeframe_pseudo}_{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
     dtest = load_csv_to_dtest(csv_name)
     y_test = dtest.get_label()
 
@@ -385,15 +384,10 @@ def datas(symbol, folder = folder, mode = mode):
     skip_size   = int(t_size * (1 - train_split_ratio))
     total_size  = int(t_size * train_split_ratio)
     train_size  = int(total_size * (1 - test_split_ratio))
-    #test_size  = int(train_size * test_split_ratio)
+    train_size  = int(t_size * (1 - test_split_ratio))
+    train_dataset = dataset.skip(skip_size).take(train_size).batch(batch_size).shuffle(1000) # skip(skip_size).
+    test_dataset = dataset.skip(skip_size).skip(train_size).batch(batch_size) # skip(skip_size).
 
-    # Division du dataset en données d'entrainement et de test
-    #_dataset = dataset.skip(t_size - total_size).batch(batch_size) # dataset.take(train_size).batch(batch_size).shuffle(1000)
-    train_dataset = dataset.skip(skip_size).take(train_size).batch(batch_size).shuffle(1000)
-    test_dataset = dataset.skip(skip_size).skip(train_size).batch(batch_size)
-
-    #test_dataset = test_dataset.filter(lambda x, y: abs(y[0]) > 4.0)
-    #train_dataset = train_dataset.filter(lambda x, y: abs(y[0]) > 3.0)
     return train_dataset, test_dataset
 
 # Define a function to convert float64 to float32
@@ -402,7 +396,7 @@ def convert_to_float32(features, labels):
     labels = tf.cast(labels, tf.float32)
     return features, labels
 
-def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=testfile_extension):
+def use_xgboost(timeframe_pseudo, trend, mode, learningrate, maxdepth, extension, test_extension=testfile_extension):
     # Initialize the CatBoostClassifier
     #model = CatBoostClassifier(iterations=50000, depth=5, learning_rate=0.001, loss_function='MultiClass', verbose=100)
     folder = f"{trend}_data"
@@ -428,7 +422,7 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
     dataframes = []
 
     # Iterate over the dataset in batches
-    for batch in test_dataset:
+    for batch in train_dataset:
         # Separate the tuple into features and labels
         features = batch[:-1]  # All elements except the last one
         labels = batch[-1]  # The last element is the labels
@@ -466,7 +460,7 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
     dataframes = []
 
     # Iterate over the dataset in batches
-    for batch in train_dataset:
+    for batch in test_dataset:
         # Separate the tuple into features and labels
         features = batch[:-1]  # All elements except the last one
         labels = batch[-1]  # The last element is the labels
@@ -487,14 +481,14 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
         dataframes.append(batch_df)
 
     # Concatenate all DataFrames into a single DataFrame
-    full_df = concat(dataframes, ignore_index=True)
+    full_df_test = concat(dataframes, ignore_index=True)
 
     # Display the resulting DataFrame (first few rows)
-    print(full_df.head())
+    print(full_df_test.head())
 
     # Separate features and labels
-    X_test = full_df.drop(columns=['label'])
-    y_test = full_df['label']
+    X_test = full_df_test.drop(columns=['label'])
+    y_test = full_df_test['label']
 
 
     # Convert dense matrix to sparse format if applicable
@@ -507,8 +501,11 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
     print(f"dtrain length = {dtrain.num_row()}") # Check number of rows in dtrain
     print(f"y_train length = {len(y_train)}") # Check number of labels
 
+
     dtest = xgb.DMatrix(X_test, label=y_test  )
-    csv_name = f'test_data/dtest{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
+    print(f"dtest length = {dtest.num_row()}") # Check number of rows in dtest
+    print(f"y_test length = {len(y_test)}") # Check number of labels
+    csv_name = f'test_data/dtest{timeframe_pseudo}_{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
     save_dtest_csv(dtest, csv_name)
     print(f"{csv_name} saved.")
 
@@ -529,7 +526,7 @@ def use_xgboost(trend, mode, learningrate, maxdepth, extension, test_extension=t
     watchlist = [(dtrain, 'train') , (dtest, 'eval')] #
     bst = xgb.train(params, dtrain, num_boost_round=num_boost_round, evals=watchlist,verbose_eval=50, early_stopping_rounds=10)
 
-    model_name = f"model_data/M{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
+    model_name = f"model_data/M{timeframe_pseudo}_{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
     rmfile(model_name)
     xdump(bst, model_name)
     print(f"Model {model_name} saved.")
@@ -552,13 +549,14 @@ def apply_model(model_name, element):
 
 
 def main(
+    timeframe_pseudo,
     trend,
     mode,
     learningrate,
     maxdepth,
     extension
 ):
-    model_name = use_xgboost(trend, mode, learningrate, maxdepth, extension)
+    model_name = use_xgboost(timeframe_pseudo, trend, mode, learningrate, maxdepth, extension)
     #test_model(model_name)
 
 if __name__ == '__main__':
@@ -605,9 +603,19 @@ if __name__ == '__main__':
         choices = extensions
     )
 
+    # symbol, order_type, volume, price=None, sl=None, tp=None
+    parser.add_argument(
+        "-p",
+        "--timeframepseudo",
+        help="The timeframe pseudo",
+        choices = delta_timeframe_pair_pseudos.keys(),
+        required=True
+    )
+
     args = parser.parse_args()
 
     main(
+        timeframe_pseudo=args.timeframepseudo,
         trend=args.trend,
         mode=args.mode,
         learningrate=args.learningrate,

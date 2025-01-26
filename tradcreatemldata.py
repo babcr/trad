@@ -34,6 +34,7 @@ def floor_the_date(date_obj):
 def to_minute_in_the_year(date_str):
     # Convert string to a datetime object
     date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+
     floored_date_obj = floor_the_date(date_obj)
     # Convert the datetime object to Unix timestamp (seconds since epoch)
     timestamp_seconds = date_obj.timestamp()
@@ -112,7 +113,7 @@ def create_custom_csv(input_csv, output_bull_csv, output_bear_csv, period, testn
         
         if next_five_sum > front[1]:
             val_bull = 1
-        elif next_five_sum < front[1]:
+        elif next_five_sum <= front[1]:
             val_bull = 0
         else:
             continue
@@ -120,7 +121,7 @@ def create_custom_csv(input_csv, output_bull_csv, output_bear_csv, period, testn
 
         if next_five_sum < -front[1]:
             val_bear = 1
-        elif next_five_sum > -front[1]:
+        elif next_five_sum >= -front[1]:
             val_bear = 0
         else:
             continue
@@ -163,14 +164,6 @@ if __name__ == '__main__':
         "--period",
         help="Period",
         default=period,
-        type=int
-    )
-
-    parser.add_argument(
-        "-t",
-        "--testnum",
-        help="Test number of candlesticks",
-        default=testnum,
         type=int
     )
 

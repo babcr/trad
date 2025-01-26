@@ -22,28 +22,35 @@ dashboard = {
     'base_currency'             : 'EUR'
 }
 
-certitude_degree_of_categorization = 0.
-
+initial_thresh = 0.5
 
 prediction_period = 30 # in days
 minutes_in_a_year = 525600
-hourly  = (24 * prediction_period * 2, mt5.TIMEFRAME_H1)
-min5    = (2 * prediction_period * 2, mt5.TIMEFRAME_M5)
-min15   = (6 * prediction_period * 2, mt5.TIMEFRAME_M15)
-min30   = (3 * prediction_period * 2, mt5.TIMEFRAME_M30)
-hour6   = (24 * 6 * prediction_period * 2, mt5.TIMEFRAME_H6)
-daily   = (24 * 24 * prediction_period * 2, mt5.TIMEFRAME_D1)
+min5    = (24 * prediction_period / 12 , mt5.TIMEFRAME_M5 , 1/12  *  60)
+min15   = (24 * prediction_period / 4  , mt5.TIMEFRAME_M15, 0.25  *  60)
+hourly  = (24 * prediction_period      , mt5.TIMEFRAME_H1 , 1     *  60)
+hour2   = (24 * prediction_period * 2  , mt5.TIMEFRAME_H2 , 2     *  60)
+hour3   = (24 * prediction_period * 3  , mt5.TIMEFRAME_H3 , 3     *  60)
+hour4   = (24 * prediction_period * 4  , mt5.TIMEFRAME_H4 , 4     *  60)
+hour6   = (24 * prediction_period * 6  , mt5.TIMEFRAME_H6 , 6     *  60)
+hour8   = (24 * prediction_period * 8  , mt5.TIMEFRAME_H8 , 8     *  60)
+hour12  = (24 * prediction_period * 12 , mt5.TIMEFRAME_H12, 12    *  60)
+daily   = (24 * prediction_period * 24 , mt5.TIMEFRAME_D1 , 24    *  60)
 
-delta_timeframe_pairs = [hourly, min5, min15, hour6, daily]
+delta_timeframe_pairs = [hourly, min5, min15, hour6, daily, hour2, hour3, hour4, hour6, hour8, hour12]
 initial_thresh = 0.5
 
 delta_timeframe_pair_pseudos = {
-    'h' : hourly,
-    'm' : min5,
-    'mm': min15,
-    'm3': min30,
-    's' : hour6,
-    'd' : daily
+    'm'  : min5,
+    'mm' : min15,
+    'h'  : hourly,
+    'h2' : hour2,
+    'h3' : hour3,
+    'h4' : hour4,
+    'h6' : hour6,
+    'h8' : hour8,
+    'h12': hour12,
+    'd'  : daily
 }
 
 
@@ -89,54 +96,50 @@ symbols_list = [
     'bu', 'xu', 'etu'
 ]
 #34
-demo = True
+demo = False
 
 pseudos = {
-
-    'ech': 'EURCHF',
-
-    'uc' : 'USDCAD',
-
-    'gc' : 'GBPCAD',
-    'gn' : 'GBPNZD',
-    'gu' : 'GBPUSD',
-    'gs' : 'GBPSGD',
-
-    'nc' : 'NZDCAD',
-    'nch': 'NZDCHF',
-
-    'ns' : 'NZDSGD',
-
-    'an' : 'AUDNZD',
-
-    'ac' : 'AUDCAD',
-    'ach': 'AUDCHF',
-    'au' : 'AUDUSD',
-    'as' : 'AUDSGD',
-    'aj' : 'AUDJPY',
-
-    'cch': 'CADCHF',
-    'cj' : 'CADJPY',
-    'nu' : 'NZDUSD',
-    'nj' : 'NZDJPY',
-    'gj' : 'GBPJPY',
-    'uj' : 'USDJPY',
-    'us' : 'USDSGD',
-
-    'gch': 'GBPCHF',
-    'ga' : 'GBPAUD',
-    'en' : 'EURNZD',
-    'es' : 'EURSGD',
-
-    'uch': 'USDCHF',
     'eu' : 'EURUSD',
     'eg' : 'EURGBP',
     'ec' : 'EURCAD',
     'ea' : 'EURAUD',
-
+    'ech': 'EURCHF',
+    'en' : 'EURNZD',
+    #'es' : 'EURSGD',
+    'uch': 'USDCHF',
+    'uc' : 'USDCAD',
+    'uj' : 'USDJPY',
+    #'us' : 'USDSGD',
+    'gch': 'GBPCHF',
+    'ga' : 'GBPAUD',
+    'gc' : 'GBPCAD',
+    'gn' : 'GBPNZD',
+    'gu' : 'GBPUSD',
+    'gj' : 'GBPJPY',
+    #'gs' : 'GBPSGD',
+    'nu' : 'NZDUSD',
+    'nc' : 'NZDCAD',
+    'nch': 'NZDCHF',
+    'nj' : 'NZDJPY',
+    #'ns' : 'NZDSGD',
+    'an' : 'AUDNZD',
+    'ac' : 'AUDCAD',
+    'ach': 'AUDCHF',
+    'au' : 'AUDUSD',
+    #'as' : 'AUDSGD',
+    'aj' : 'AUDJPY',
+    'cch': 'CADCHF',
+    'cj' : 'CADJPY',
     'bu' : f'BTCUSD{demo * ".bc"}',
+    'etu': f'ETHUSD{demo * ".bc"}',
     'xu' : f'XRPUSD{demo * ".bc"}',
-    'etu': f'ETHUSD{demo * ".bc"}'
+    'dou': f'DOGEUSD{demo * ".bc"}',
+    'du' : f'DOTUSD{demo * ".bc"}',
+    'adu': f'ADAUSD{demo * ".bc"}',
+    'lu' : f'LTCUSD{demo * ".bc"}',
+    'dau': f'DASHUSD{demo * ".bc"}',
+    'xmu': f'XMRUSD{demo * ".bc"}',
+    'neu': f'NEOUSD{demo * ".bc"}'
 }
 
 def symbol_converter(pseudo):
@@ -202,6 +205,6 @@ modelfile_extension = ".json"
 testfile_extension = ".csv"
 extensions = [".json", ".ubj", ".bin", ".joblib", ".pkl"]
 narfact = 1.0 # to choose on which time scale you which to perform  modelling and tests
-model_in_use = f"model_data/M{prediction_period}_{mean_period}_{learning_rate}_{percentile}_{learning_trend}_{mode}_{testnum * narfact}{modelfile_extension}"
+model_in_use = f"model_data/M{prediction_period}_{prediction_period}_{learning_rate}_{percentile}_{learning_trend}_{mode}_{testnum * narfact}{modelfile_extension}"
 
 
