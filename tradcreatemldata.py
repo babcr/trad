@@ -2,27 +2,34 @@
 # -*- coding: UTF-8 -*-
 import pandas as pd
 import argparse
-import tradautotools as ta
+from tradautotools import delete_files_in_directory
 from datetime import datetime
-from tradparams import to_float,testnum_inter, testnum_bulk, testnum_short, testnum_wide, testnum_narrow, percentile, pseudos, period, testnum, minutes_in_a_year
+from tradparams import to_float, testnum_to_gain_ratio, testnum_inter, testnum_bulk, testnum_short, testnum_wide, testnum_narrow, pseudos, period, minutes_in_a_year
 
 
-def find_division_points(lst, percentile=percentile):
+def find_division_points(lst, gain):
     # Tri de la liste
     sorted_lst = sorted(lst)
-
+    print(f"Starting elements: {sorted_lst[0:5]}")
+    print(f"Ending elements: {sorted_lst[-5:]}")
+    percentile = 2
     # Longueur de la liste
     n = len(sorted_lst)
+    while True:
+        # Calcul des indices pour les points de division
+        idx1 = int(n / percentile)  # Indice du 33.33ème percentile
+        idx2 = int(n * (1 - 1 / percentile))  # Indice du 66.67ème percentile
 
-    # Calcul des indices pour les points de division
-    idx1 = int(n / percentile)  # Indice du 33.33ème percentile
-    idx2 = int(n * (1 - 1 / percentile))  # Indice du 66.67ème percentile
+        # Points de division
+        division_point1 = sorted_lst[idx1]
+        division_point2 = sorted_lst[idx2]
 
-    # Points de division
-    division_point1 = sorted_lst[idx1]
-    division_point2 = sorted_lst[idx2]
+        if division_point2 >= gain:
+            break
+        else:
+            percentile += 1
 
-    return division_point1, division_point2
+    return division_point1, division_point2, percentile
 
 
 def floor_the_date(date_obj):
@@ -69,12 +76,12 @@ def create_label_list(input_csv, period, testnum):
         rows.append(next_five_sum)
     return list(rows)
 
-def frontiers(period, testnum):
+def frontiers(period, testnum, t2g=testnum_to_gain_ratio):
     llist = []
     for x in pseudos:
         llist = llist+create_label_list(f"raw_data/{pseudos[x]}_scores.csv", period, testnum)
 
-    front = find_division_points(llist)
+    front = find_division_points(llist, testnum * t2g)
 
     print(f"Les points frontiere sont : {front}")
 
@@ -140,24 +147,42 @@ def create_custom_csv(input_csv, output_bull_csv, output_bear_csv, period, testn
     print(f"Fichier {output_bear_csv} créé avec succès avec {len(rows_bear)} lignes.")
 
 
-def main(period, testnum_wide=testnum_wide, testnum_narrow=testnum_narrow, testnum_short=testnum_short, testnum_inter=testnum_inter, testnum_bulk=testnum_bulk):
-    front_wide = frontiers(period, testnum_wide)
-    front_bulk = frontiers(period, testnum_bulk)
+def main(
+        period, 
+        testnum_wide=testnum_wide, 
+        testnum_narrow=testnum_narrow, 
+        testnum_short=testnum_short, 
+        testnum_inter=testnum_inter, 
+        testnum_bulk=testnum_bulk
+    ):
+    front_wide   = frontiers(period, testnum_wide  )
+    front_bulk   = frontiers(period, testnum_bulk  )
     front_narrow = frontiers(period, testnum_narrow)
-    front_inter = frontiers(period, testnum_inter)
-    front_short = frontiers(period, testnum_short)
+    front_inter  = frontiers(period, testnum_inter )
+    front_short  = frontiers(period, testnum_short )
     for x in pseudos:
-        #ta.rmfile(f"{pseudos[x]}_data.csv")
-        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/wide/{pseudos[x]}_{period}_{testnum_wide}_data.csv", f"bear_data/wide/{pseudos[x]}_{period}_{testnum_wide}_data.csv", period + testnum_wide, testnum_wide, front_wide)
-        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_data.csv", f"bear_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_data.csv", period + testnum_narrow, testnum_narrow, front_narrow)
-        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/short/{pseudos[x]}_{period}_{testnum_short}_data.csv", f"bear_data/short/{pseudos[x]}_{period}_{testnum_short}_data.csv", period + testnum_short, testnum_short, front_short)
-        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/inter/{pseudos[x]}_{period}_{testnum_inter}_data.csv", f"bear_data/inter/{pseudos[x]}_{period}_{testnum_inter}_data.csv", period + testnum_inter, testnum_inter, front_inter)
-        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_data.csv", f"bear_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_data.csv", period + testnum_bulk, testnum_bulk, front_bulk)
+        delete_files_in_directory("bull_data/wide/")
+        delete_files_in_directory("bull_data/narrow/")
+        delete_files_in_directory("bull_data/short/")
+        delete_files_in_directory("bull_data/inter/")
+        delete_files_in_directory("bull_data/bulk/")
+
+        delete_files_in_directory("bear_data/wide/")
+        delete_files_in_directory("bear_data/narrow/")
+        delete_files_in_directory("bear_data/short/")
+        delete_files_in_directory("bear_data/inter/")
+        delete_files_in_directory("bear_data/bulk/")
+
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/wide/{pseudos[x]}_{period}_{testnum_wide}_{front_wide[2]}_data.csv", f"bear_data/wide/{pseudos[x]}_{period}_{testnum_wide}_{front_wide[2]}_data.csv", period + testnum_wide, testnum_wide, front_wide)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_{front_narrow[2]}_data.csv", f"bear_data/narrow/{pseudos[x]}_{period}_{testnum_narrow}_{front_narrow[2]}_data.csv", period + testnum_narrow, testnum_narrow, front_narrow)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/short/{pseudos[x]}_{period}_{testnum_short}_{front_short[2]}_data.csv", f"bear_data/short/{pseudos[x]}_{period}_{testnum_short}_{front_short[2]}_data.csv", period + testnum_short, testnum_short, front_short)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/inter/{pseudos[x]}_{period}_{testnum_inter}_{front_inter[2]}_data.csv", f"bear_data/inter/{pseudos[x]}_{period}_{testnum_inter}_{front_inter[2]}_data.csv", period + testnum_inter, testnum_inter, front_inter)
+        create_custom_csv(f"raw_data/{pseudos[x]}_scores.csv",f"bull_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_{front_bulk[2]}_data.csv", f"bear_data/bulk/{pseudos[x]}_{period}_{testnum_bulk}_{front_bulk[2]}_data.csv", period + testnum_bulk, testnum_bulk, front_bulk)
 
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='order placing function for metatrader 5')
+    parser = argparse.ArgumentParser(description='order placing function for metatrader 5') 
 
     parser.add_argument(
         "-p",

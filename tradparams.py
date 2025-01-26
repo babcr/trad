@@ -26,16 +26,16 @@ initial_thresh = 0.5
 
 prediction_period = 30 # in days
 minutes_in_a_year = 525600
-min5    = (24 * prediction_period / 12 , mt5.TIMEFRAME_M5 , 1/12  *  60)
-min15   = (24 * prediction_period / 4  , mt5.TIMEFRAME_M15, 0.25  *  60)
-hourly  = (24 * prediction_period      , mt5.TIMEFRAME_H1 , 1     *  60)
-hour2   = (24 * prediction_period * 2  , mt5.TIMEFRAME_H2 , 2     *  60)
-hour3   = (24 * prediction_period * 3  , mt5.TIMEFRAME_H3 , 3     *  60)
-hour4   = (24 * prediction_period * 4  , mt5.TIMEFRAME_H4 , 4     *  60)
-hour6   = (24 * prediction_period * 6  , mt5.TIMEFRAME_H6 , 6     *  60)
-hour8   = (24 * prediction_period * 8  , mt5.TIMEFRAME_H8 , 8     *  60)
-hour12  = (24 * prediction_period * 12 , mt5.TIMEFRAME_H12, 12    *  60)
-daily   = (24 * prediction_period * 24 , mt5.TIMEFRAME_D1 , 24    *  60)
+min5    = (24 * prediction_period / 12  , mt5.TIMEFRAME_M5 , 1/12  *  60)
+min15   = (24 * prediction_period / 4   , mt5.TIMEFRAME_M15, 0.25  *  60)
+hourly  = (24 * prediction_period       , mt5.TIMEFRAME_H1 , 1     *  60)
+hour2   = (24 * prediction_period * 2   , mt5.TIMEFRAME_H2 , 2     *  60)
+hour3   = (24 * prediction_period * 3   , mt5.TIMEFRAME_H3 , 3     *  60)
+hour4   = (24 * prediction_period * 4   , mt5.TIMEFRAME_H4 , 4     *  60)
+hour6   = (24 * prediction_period * 6   , mt5.TIMEFRAME_H6 , 6     *  60)
+hour8   = (24 * prediction_period * 8   , mt5.TIMEFRAME_H8 , 8     *  60)
+hour12  = (24 * prediction_period * 12  , mt5.TIMEFRAME_H12, 12    *  60)
+daily   = (24 * prediction_period * 24  , mt5.TIMEFRAME_D1 , 24    *  60)
 
 delta_timeframe_pairs = [hourly, min5, min15, hour6, daily, hour2, hour3, hour4, hour6, hour8, hour12]
 initial_thresh = 0.5
@@ -173,7 +173,9 @@ max_depth = 7
 num_boost_round = 1000000
 phases = ['train','test']
 phase = "train"
-percentile = 2
+percentile = 8
+testnum_to_gain_ratio = 0.6
+
 
 learning_trend = "bull"
 trends = ["bull","bear"]

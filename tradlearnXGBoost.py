@@ -3,10 +3,10 @@ import locale
 locale.setlocale(locale.LC_NUMERIC, 'C')  # 'C' locale forces '.' as the decimal separator
 
 from pandas import read_csv, DataFrame, to_numeric, concat
-from numpy import float64, mean , array, float32, column_stack
+from numpy import float64, mean , array, float32, column_stack, exp, sum
 import functools
 from math import ceil
-from tradautotools import rmfile
+from tradautotools import rmfile, find_file_by_starting_words, extract_last_number, get_suffix
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 import tensorflow as tf
@@ -16,8 +16,8 @@ import argparse
 from scipy.sparse import csr_matrix
 import xgboost as xgb
 from collections import deque
-from tradparams import delta_timeframe_pair_pseudos, initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, percentile, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, testnum, period, folder, mode
-
+from imblearn.over_sampling import SMOTE
+from tradparams import delta_timeframe_pair_pseudos, initial_thresh, max_depth, bulking_factors, narrowing_factors, extensions, modes, trends, prediction_period, mean_period, learning_rate, learning_trend, modelfile_extension, testfile_extension, pseudos, num_boost_round, testnum, period, folder, mode
 
 def xdump(model,filepath):
     # Save the model
@@ -32,7 +32,7 @@ def xload(filepath):
 num_features = period - testnum + 1
 batch_size = 32  # À ajuster selon les performances de votre machine
 test_split_ratio = 0.2
-train_split_ratio = 1.
+train_split_ratio = 1.0
 epsilon = 0.001
 last_epsilon = 0.000001
 
@@ -96,7 +96,7 @@ def load_csv_to_dtest(csvfilepath):
     dtest = xgb.DMatrix(X_test, label=y_test)
     return dtest
 
-def calculate_accuracy(bst, dtest, y_test, mode=mode, learningrate=learning_rate, trend=learning_trend,initialthresh=initial_thresh):
+def calculate_accuracy(bst, dtest, y_test, percentile, mode=mode, learningrate=learning_rate, trend=learning_trend,initialthresh=initial_thresh):
     narfact = mode_to_narfact(mode)
     preds = bst.predict(dtest)
     # Exemple de conversion des scores de prédiction (logits) en probabilités avec softmax
@@ -298,7 +298,7 @@ def iterate_threshold_with_custom_cycle(threshold_start, optimization_function, 
     return 0.0, 0.0, 0
 
 
-def set_accuracy(bst, dtest, y_test, mode=mode, learningrate=learning_rate, trend=learning_trend):
+def set_accuracy(bst, dtest, y_test, percentile, mode=mode, learningrate=learning_rate, trend=learning_trend):
     narfact = mode_to_narfact(mode)
     print(f"\n=======================================================")
     print(f'''
@@ -331,24 +331,26 @@ Prediction label period = {testnum * narfact}\n
         print(f"\nFinal total a = {final_tot_a}")
         print(f"\niterations = {iterations}")
 
-        calculate_accuracy(bst,dtest,y_test,mode,learningrate,trend,final_threshold)
+        calculate_accuracy(bst,dtest,y_test,percentile,mode,learningrate,trend,final_threshold)
+
 
 def test_model(timeframe_pseudo, learningrate=learning_rate, trend=learning_trend, mode=mode,extension=modelfile_extension, test_extension=testfile_extension):
     # Make predictions
     # Load the model from the file
     narfact = mode_to_narfact(mode)
-
-    model_name = f"model_data/M{timeframe_pseudo}_{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
+    model_directory="model_data/"
+    percentile, model_filen = get_suffix(model_directory, f"M{timeframe_pseudo}_{prediction_period}_{mean_period}_{learningrate}_{trend}_{mode}_{testnum * narfact}_")
+    model_name = f"{model_directory}{model_filen}"
     bst = xload(model_name)
 
     print(f"model {model_name} successfully loaded.")
 
     # Load DMatrix
-    csv_name = f'test_data/dtest{timeframe_pseudo}_{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
+    csv_name = f'test_data/dtest{timeframe_pseudo}_{prediction_period}_{mean_period}_{trend}_{mode}_{testnum * narfact}_{percentile}{test_extension}'
     dtest = load_csv_to_dtest(csv_name)
     y_test = dtest.get_label()
 
-    set_accuracy(bst, dtest, y_test, mode=mode, learningrate=learningrate, trend=trend)
+    set_accuracy(bst, dtest, y_test, percentile, mode=mode, learningrate=learningrate, trend=trend)
 
 
 def save_test_data(dtest : xgb.DMatrix, filepath='dtest.buffer'):
@@ -357,11 +359,14 @@ def save_test_data(dtest : xgb.DMatrix, filepath='dtest.buffer'):
     dtest.save_binary(filepath)
 
 
-
 def datas(symbol, folder = folder, mode = mode):
     # Concaténer tous les DataFrames dans un seul DataFrame
     narfact = mode_to_narfact(mode)
-    df = read_csv(f"{folder}/{mode}/{symbol}_{period}_{ceil(testnum * narfact)}_data.csv", dtype=float32)
+    directory = f"{folder}/{mode}/"
+    percentile, filen = get_suffix(directory, f"{symbol}_{period}_{ceil(testnum * narfact)}")
+    file_name = f"{directory}{filen}"
+
+    df = read_csv(file_name, dtype=float32)
 
     num_features = period + 1
     # Vérification du nombre de colonnes
@@ -384,17 +389,69 @@ def datas(symbol, folder = folder, mode = mode):
     skip_size   = int(t_size * (1 - train_split_ratio))
     total_size  = int(t_size * train_split_ratio)
     train_size  = int(total_size * (1 - test_split_ratio))
-    train_size  = int(t_size * (1 - test_split_ratio))
-    train_dataset = dataset.skip(skip_size).take(train_size).batch(batch_size).shuffle(1000) # skip(skip_size).
-    test_dataset = dataset.skip(skip_size).skip(train_size).batch(batch_size) # skip(skip_size).
+    #train_size  = int(t_size * (1 - test_split_ratio))
 
-    return train_dataset, test_dataset
+    if train_split_ratio < 1.0:
+        train_dataset = dataset.take(total_size).take(train_size).batch(batch_size).shuffle(1000) # skip(skip_size).
+        test_dataset = dataset.take(total_size).skip(train_size).batch(batch_size) # skip(skip_size).        
+    else:
+        train_dataset = dataset.skip(skip_size).take(train_size).batch(batch_size).shuffle(1000) # skip(skip_size).
+        test_dataset = dataset.skip(skip_size).skip(train_size).batch(batch_size) # skip(skip_size).
+
+    return train_dataset, test_dataset, percentile
 
 # Define a function to convert float64 to float32
 def convert_to_float32(features, labels):
     features = tf.cast(features, tf.float32)
     labels = tf.cast(labels, tf.float32)
     return features, labels
+
+
+def precision_eval(y_pred, dtrain):
+    """
+    Custom evaluation metric to optimize precision during training.
+    """
+    # Extract true labels
+    y_true = dtrain.get_label()
+    
+    # Set a classification threshold (e.g., 0.5)
+    threshold = 0.5
+    
+    # Convert probabilities into binary predictions
+    y_pred_binary = (y_pred > threshold).astype(int)
+    
+    # Compute True Positives (TP) and False Positives (FP)
+    tp = sum((y_true == 1) & (y_pred_binary == 1))
+    fp = sum((y_true == 0) & (y_pred_binary == 1))
+    
+    # Avoid division by zero
+    precision = tp / (tp + fp + 1e-8)
+    
+    # Return the metric name and value
+    return 'precision', precision
+
+
+def precision_objective(y_pred, dtrain):
+    """
+    Custom objective function to approximate precision.
+    Penalizes false positives more heavily.
+    """
+    # Get true labels
+    y_true = dtrain.get_label()
+    
+    # Apply sigmoid to raw predictions to get probabilities
+    preds = 1.0 / (1.0 + exp(-y_pred))
+    
+    # Gradient and Hessian for log-loss
+    grad = preds - y_true
+    
+    # Add penalty for false positives
+    penalty = 2.0  # Weight for false positives
+    grad += penalty * (1 - y_true) * preds  # Penalize FP
+    
+    hess = preds * (1 - preds)  # Standard hessian for logistic loss
+    
+    return grad, hess
 
 def use_xgboost(timeframe_pseudo, trend, mode, learningrate, maxdepth, extension, test_extension=testfile_extension):
     # Initialize the CatBoostClassifier
@@ -403,9 +460,10 @@ def use_xgboost(timeframe_pseudo, trend, mode, learningrate, maxdepth, extension
     narfact = mode_to_narfact(mode)
     data_frames_train = []
     data_frames_test = []
+    percentile = None
     for x in pseudos:
         # Lire chaque fichier CSV et l'ajouter à la liste des DataFrames
-        train_dataset, test_dataset = datas(pseudos[x], folder=folder, mode=mode)
+        train_dataset, test_dataset, percentile = datas(pseudos[x], folder=folder, mode=mode)
         test_dataset = test_dataset.map(convert_to_float32)
         train_dataset = train_dataset.map(convert_to_float32)
         data_frames_train.append(train_dataset)
@@ -450,8 +508,11 @@ def use_xgboost(timeframe_pseudo, trend, mode, learningrate, maxdepth, extension
 
 
     # Separate features and labels
-    X_train = full_df.drop(columns=['label'])
-    y_train = full_df['label']
+    X_train_ = full_df.drop(columns=['label'])
+    y_train_ = full_df['label']
+
+    smote = SMOTE(random_state=42)
+    X_train, y_train = smote.fit_resample(X_train_, y_train_)
 
 
     #X_train, y_train = smote.fit_resample(X_train, y_train)
@@ -505,7 +566,7 @@ def use_xgboost(timeframe_pseudo, trend, mode, learningrate, maxdepth, extension
     dtest = xgb.DMatrix(X_test, label=y_test  )
     print(f"dtest length = {dtest.num_row()}") # Check number of rows in dtest
     print(f"y_test length = {len(y_test)}") # Check number of labels
-    csv_name = f'test_data/dtest{timeframe_pseudo}_{prediction_period}_{mean_period}_{percentile}_{trend}_{mode}_{testnum * narfact}{test_extension}'
+    csv_name = f'test_data/dtest{timeframe_pseudo}_{prediction_period}_{mean_period}_{trend}_{mode}_{testnum * narfact}_{percentile}{test_extension}'
     save_dtest_csv(dtest, csv_name)
     print(f"{csv_name} saved.")
 
@@ -513,25 +574,33 @@ def use_xgboost(timeframe_pseudo, trend, mode, learningrate, maxdepth, extension
     # Define parameters (you can tune these for your data)
     params = {
         'objective': 'binary:logistic', # 'binary:logistic' for binary classification
-        #'num_class': 2,               # Number of classes (for multi-class problems)
-        'max_depth': maxdepth,               # Maximum depth of a tree
-        'eta': learningrate,          # Learning rate
-        'subsample': 0.2,             # Fraction of samples to use for each tree
-        'colsample_bytree': 0.2,      # Fraction of features to use for each tree
-        'seed': 42,                   # Random seed for reproducibility
-        'eval_metric': 'logloss'      # Evaluation metric
+        'max_depth': maxdepth,          # Maximum depth of a tree
+        'eta': learningrate,            # Learning rate
+        'subsample': 0.2,               # Fraction of samples to use for each tree
+        'colsample_bytree': 0.2,        # Fraction of features to use for each tree
+        'seed': 42,                     # Random seed for reproducibility
+        'eval_metric': 'logloss'        # Evaluation metric
     }
 
     # Train the model
     watchlist = [(dtrain, 'train') , (dtest, 'eval')] #
-    bst = xgb.train(params, dtrain, num_boost_round=num_boost_round, evals=watchlist,verbose_eval=50, early_stopping_rounds=10)
+    bst = xgb.train(
+        params, 
+        dtrain, 
+        num_boost_round=num_boost_round, 
+        evals=watchlist,
+        feval=precision_eval,
+        obj=precision_objective,
+        verbose_eval=50, 
+        early_stopping_rounds=10
+    )
 
-    model_name = f"model_data/M{timeframe_pseudo}_{prediction_period}_{mean_period}_{learningrate}_{percentile}_{trend}_{mode}_{testnum * narfact}{extension}"
+    model_name = f"model_data/M{timeframe_pseudo}_{prediction_period}_{mean_period}_{learningrate}_{trend}_{mode}_{testnum * narfact}_{percentile}{extension}"
     rmfile(model_name)
     xdump(bst, model_name)
     print(f"Model {model_name} saved.")
 
-    calculate_accuracy(bst, dtest, y_test, mode=mode, learningrate=learningrate, trend=trend)
+    calculate_accuracy(bst, dtest, y_test, percentile, mode=mode, learningrate=learningrate, trend=trend)
     return model_name
 
 
