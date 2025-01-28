@@ -2,7 +2,7 @@ from random import randint
 from tradparams import granularity_factor, order_suffix, deviation, max_spread, limit_spread, mt5, order_types, dashboard, eur_conv_pairs, buy_orders, sell_orders
 from tradparams import delta_timeframe_pair_pseudos, orders_list, symbols_list, pseudos, symbol_converter
 from math import ceil, floor
-from os import path, remove
+from os import path, remove, listdir, path
 from datetime import datetime, timedelta
 
 class RiskTooHighException(Exception):
@@ -32,6 +32,94 @@ class SpreadTooHighException(Exception):
         self.spread = spread
         self.message = f"{message}. Spread: {self.spread}"
         super().__init__(self.message)
+
+class MaxPositionsException(Exception):
+    """Exception raised when the maximum number of positions is reached."""
+    def __init__(self, positions, message=f"The maximum number of positions is reached ({floor(100.0 / dashboard["risk_level"])})"):
+        self.positions = positions
+        self.message = f"{message}. Spread: {self.positions}"
+        super().__init__(self.message)
+
+class UnicityError(Exception):
+    """Exception raised when 2 files with the same nomination are found."""
+    def __init__(self, starting_word, matching_files, message="The given starting word is held by two distinct files in the folder"):
+        self.starting_word = starting_word
+        self.matching_files = matching_files
+        self.message = f"{message}. starting_word: {starting_word}, matching_files: {matching_files}"
+        super().__init__(self.message)
+
+def find_file_by_starting_words(directory, starting_words):
+    """
+    Finds a file in a directory that starts with the given words.
+
+    :param directory: The directory to search in
+    :param starting_words: The starting words of the file name
+    :return: The file name if uniquely found
+    :raises UnicityError: If more than one file matches the starting words
+    :raises FileNotFoundError: If no file matches the starting words
+    """
+    if not path.exists(directory):
+        raise FileNotFoundError(f"The directory '{directory}' does not exist.")
+    
+    if not path.isdir(directory):
+        raise NotADirectoryError(f"The path '{directory}' is not a directory.")
+
+    # Find all files that start with the given starting words
+    matching_files = [
+        file for file in listdir(directory) if file.startswith(starting_words)
+    ]
+
+    if len(matching_files) == 0:
+        raise FileNotFoundError(f"No file starts with '{starting_words}'.")
+    elif len(matching_files) > 1:
+        raise UnicityError(starting_words, matching_files)
+    
+    return matching_files[0]
+
+def extract_last_number(filename):
+    """
+    Extracts the last word or number in the file name that contains at least one digit.
+    
+    :param filename: The file name with words and numbers separated by '_'
+    :return: The last word or number containing at least one digit, or None if none is found
+    """
+    # Split the filename into parts by '_'
+    parts = filename.split('_')
+    
+    # Loop through parts in reverse and find the first that contains at least one digit
+    for part in reversed(parts):
+        if all(char.isdigit() for char in part.split('.')[0]):
+            return part.split('.')[0]
+    
+    return None  # Return None if no valid part is found
+
+def delete_files_in_directory(path):
+    """
+    Deletes all files in the specified directory.
+
+    :param path: Path to the directory
+    """
+    if not path.exists(path):
+        print(f"The specified path does not exist: {path}")
+        return
+
+    if not path.isdir(path):
+        print(f"The specified path is not a directory: {path}")
+        return
+
+    try:
+        for file in listdir(path):
+            full_path = path.join(path, file)
+            if path.isfile(full_path):
+                remove(full_path)
+                print(f"Deleted file: {full_path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def get_suffix(directory, starting_words):
+    filen = find_file_by_starting_words(directory, starting_words)
+    suffix = extract_last_number(filen)
+    return suffix, filen
 
 def rmfile(filepath):
     # Supprimez le fichier

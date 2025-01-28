@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from time import sleep
 from numpy import void, float64
 from so import main as so
-from tradautotools import init_metatrader_connexion, close_metatrader_connexion
-from tradparams import order_types_, period, mperiod, pseudos, pseudos_we, mt5, ranges_equi, prediction_period, mean_period, learning_rate, percentile, modelfile_extension
+from tradautotools import init_metatrader_connexion, close_metatrader_connexion, get_suffix
+from tradparams import floor, order_types_, period, mperiod, pseudos, pseudos_we, mt5, ranges_equi, prediction_period, mean_period, learning_rate, percentile, modelfile_extension
 from tradparams import limit_correlation, dashboard, delta_timeframe_pair_pseudos
 from tradparams import unfilled_order_lifespan_min, hours_before_repeat_order
 from tradparams import percs, special_percs, used_timeframes, ranges, directions, modes, initial_preds
@@ -256,7 +256,8 @@ def check_open_positions(symbol):
 
     # Vérification des positions ouvertes pour le symbole donné
     open_positions = mt5.positions_get(symbol=symbol)
-    has_open_positions = open_positions is not None and len(open_positions) > 0
+    nb_open_positions = len(open_positions)
+    has_open_positions = open_positions is not None and nb_open_positions > 0
 
     # Vérification des ordres en attente pour le symbole donné
     #pending_orders = mt5.orders_get(symbol=symbol)
@@ -270,8 +271,6 @@ def check_open_positions(symbol):
         #return True
     if has_open_positions:
         return True
-    #elif has_pending_orders:
-    #    return True
     else:
         return False
 
@@ -374,8 +373,8 @@ def get_active_symbols():
     # Return the unique symbols as a list
     return list(symbols)
 
-def correlated(symbol, ele, scores):
-    for op in get_active_symbols():
+def correlated(symbol, ele, scores, active_symbols):
+    for op in active_symbols: #get_active_symbols():
         if op != symbol:
             if corr(ele, load_element(op, scores)) > limit_correlation:
                 print(f"correlation {op} and {symbol} ==> {corr(ele, load_element(op, scores))}")
@@ -385,7 +384,8 @@ def correlated(symbol, ele, scores):
 def is_in_last_seconds_of_x_minutes(x):
     now = datetime.now()
     y = 60 * now.hour + now.minute
-    return y % x == x - 1 or y % x == x - 2
+
+    return True#y % x == x - 1 or y % x == x - 2
 
 def set_primary_preds(symbol : str, preds : dict, models : dict, ele : list, direction : str, rang : str, rev : bool):
     for x in directions:
@@ -411,41 +411,42 @@ def set_preds(symbol : str, preds : dict, models : dict, ele : list,  prob_limit
 
 
     preds[symbol]["pred"] = None
-    if      (preds[symbol]["pred_short"] == 2 or preds[symbol]["pred_inter"] == 2) and (preds[symbol]["pred_narrow"] == 2 or preds[symbol]["pred_bulk"] == 2 ):
+    if      preds[symbol]["pred_narrow"] == 2 or preds[symbol]["pred_inter"] == 2:
         preds[symbol]["pred"] = 2
-    elif    preds[symbol]["pred_short"] == 0  and (preds[symbol]["pred_narrow"] < 2 and preds[symbol]["pred_bulk"] < 2 and preds[symbol]["pred_inter"] < 2):
-        preds[symbol]["pred"] = 0
+    elif    preds[symbol]["pred_narrow"] == 0:
+        preds[symbol]["pred"] = 1 ####
     else:
         preds[symbol]["pred"] = 1
 
     preds[symbol]["pred_"] = None
-    if      preds[symbol]["pred_narrow_"] == 2 and preds[symbol]["pred_short_"] == 2 and preds[symbol]["pred_inter_"] == 2 and preds[symbol]["pred_bulk_"] == 2:
+    if      preds[symbol]["pred_narrow_"] == 2:
         preds[symbol]["pred_"] = 2
-    elif    preds[symbol]["pred_short_"] == 0 and preds[symbol]["pred_bulk_"] == 0 and preds[symbol]["pred_narrow"] < 2 and preds[symbol]["pred_inter"] < 2:
-        preds[symbol]["pred_"] = 0
+    elif    preds[symbol]["pred_narrow_"] == 0:
+        preds[symbol]["pred_"] = 1 ####
     else:
         preds[symbol]["pred_"] = 1
 
     preds[symbol]["pred_rev"] = None
-    if      (preds[symbol]["pred_rev_short"] == 2 or preds[symbol]["pred_rev_inter"] == 2) and (preds[symbol]["pred_rev_narrow"] == 2 or preds[symbol]["pred_rev_bulk"] == 2 ):
+    if      preds[symbol]["pred_rev_narrow"] == 2 or preds[symbol]["pred_rev_inter"] == 2:
         preds[symbol]["pred_rev"] = 0
-    elif    preds[symbol]["pred_rev_short"] == 0  and (preds[symbol]["pred_rev_narrow"] < 2 and preds[symbol]["pred_rev_bulk"] < 2 and preds[symbol]["pred_rev_inter"] < 2):
+    elif    preds[symbol]["pred_rev_narrow"] == 0:
         preds[symbol]["pred_rev"] = 1
     else:
         preds[symbol]["pred_rev"] = 1
 
     preds[symbol]["pred_rev_"] = None
-    if      preds[symbol]["pred_rev_narrow_"] == 2 and preds[symbol]["pred_rev_short_"] == 2 and preds[symbol]["pred_rev_inter_"] == 2 and preds[symbol]["pred_rev_bulk_"] == 2:
+    if      preds[symbol]["pred_rev_narrow_"] == 2:
         preds[symbol]["pred_rev_"] = 0
-    elif    preds[symbol]["pred_rev_short_"] == 0 and preds[symbol]["pred_rev_bulk_"] == 0 and preds[symbol]["pred_rev_narrow"] < 2 and preds[symbol]["pred_rev_inter"] < 2:
-        preds[symbol]["pred_rev_"] = 2
+    elif    preds[symbol]["pred_rev_narrow_"] == 0:
+        preds[symbol]["pred_rev_"] = 1
     else:
         preds[symbol]["pred_rev_"] = 1
 
 
-    return f"{symbol[:6]} {str(preds[symbol]["pred"] )} {str(preds[symbol]["pred_bulk"] )+str(preds[symbol]["pred_narrow"] )+str(preds[symbol]["pred_inter"] )+str(preds[symbol]["pred_short"] )} - {str(preds[symbol]["pred_"] )} {str(preds[symbol]["pred_bulk_"] )+str(preds[symbol]["pred_narrow_"] )+str(preds[symbol]["pred_inter_"] )+str(preds[symbol]["pred_short_"] )} | {str(preds[symbol]["pred_rev"])} {str(preds[symbol]["pred_rev_bulk"] )+str(preds[symbol]["pred_rev_narrow"] )+str(preds[symbol]["pred_rev_inter"] )+str(preds[symbol]["pred_rev_short"] )} - {str(preds[symbol]["pred_rev_"] )} {str(preds[symbol]["pred_rev_bulk_"] )+str(preds[symbol]["pred_rev_narrow_"] )+str(preds[symbol]["pred_rev_inter_"] )+str(preds[symbol]["pred_rev_short_"] )}: {scores[symbol][-1]}"
+    return f"{symbol[:6]} {str(preds[symbol]["pred"] )} {str(preds[symbol]["pred_short"] )} - {str(preds[symbol]["pred_"] )} {str(preds[symbol]["pred_short_"] )} | {str(preds[symbol]["pred_rev"])} {str(preds[symbol]["pred_rev_short"] )} - {str(preds[symbol]["pred_rev_"] )} {str(preds[symbol]["pred_rev_short_"] )}: {scores[symbol][-1]}"
 
-def execute_order(preds, symbol, ele, scores, timeframe_pseudo='h'):
+"""
+def execute_order2(preds, symbol, ele, scores, timeframe_pseudo='h'):
     global last_orders
     if symbol not in last_orders:
         last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -493,7 +494,111 @@ def execute_order(preds, symbol, ele, scores, timeframe_pseudo='h'):
         last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     return 0
+"""
 
+def get_signal(opdict, symbol):
+    bull = 0
+    bear = 0
+    bull_ = 0
+    bear_ = 0
+
+    bull_rev = 0
+    bear_rev = 0
+    bull_rev_ = 0
+    bear_rev_ = 0
+    disp = f"{symbol[:6]}"
+    
+    for ut in used_timeframes:
+        if symbol in opdict[ut]['preds']:
+            disp += f" {ut} {opdict[ut]['preds'][symbol]["pred"]}{opdict[ut]['preds'][symbol]["pred_"]}"
+            if opdict[ut]['preds'][symbol]["pred"] == 2:
+                bull += 1
+            if opdict[ut]['preds'][symbol]["pred"] == 0:
+                bear += 1
+            if opdict[ut]['preds'][symbol]["pred_"] == 2:
+                bull_ += 1
+            if opdict[ut]['preds'][symbol]["pred_"] == 0:
+                bear_ += 1
+        if symbol in opdict[ut]['preds']:
+            disp += f" - {opdict[ut]['preds'][symbol]["pred_rev"]}{opdict[ut]['preds'][symbol]["pred_rev_"]}"
+            if opdict[ut]['preds'][symbol]["pred_rev"] == 2:
+                bull_rev += 1
+            if opdict[ut]['preds'][symbol]["pred_rev"] == 0:
+                bear_rev += 1
+            if opdict[ut]['preds'][symbol]["pred_rev_"] == 2:
+                bull_rev_ += 1
+            if opdict[ut]['preds'][symbol]["pred_rev_"] == 0:
+                bear_rev_ += 1
+
+    print(disp)
+    if bull > 0 and bear == 0:
+        return 2
+    if bear > 0 and bull == 0:
+        return 0
+    if bull_ > 1 and bear_ == 0:
+        return 2
+    if bear_ > 1 and bull_ == 0:
+        return 0
+
+    if bull_rev > 0 and bear_rev == 0:
+        return 2
+    if bear_rev > 0 and bull_rev == 0:
+        return 0
+    if bull_rev_ > 1 and bear_rev_ == 0:
+        return 2
+    if bear_rev_ > 1 and bull_rev_ == 0:
+        return 0
+    return 1
+
+
+def execute_order(opdict, symbol, ele, timeframe_pseudo='h'):
+    global last_orders
+    if symbol not in last_orders:
+        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if check_pending_orders(symbol):
+        if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
+            cancel_unfilled_orders(symbol)
+        else:
+            return -1
+        
+    active_symbols = get_active_symbols()
+    nb_active_symbols = len(active_symbols)
+    if nb_active_symbols >= floor(100.0 / dashboard["risk_level"]):
+        return -1 # raise MaxPositionsException(nb_active_symbols)
+    
+    sign = get_signal(opdict, symbol)
+    if (sign == 2):
+        if check_open_positions(symbol):
+            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
+                return -1
+        if correlated(symbol, ele, opdict[timeframe_pseudo]['scores'],active_symbols):
+            return -1
+        so(
+            symbol      =   symbol,
+            ordertype   =   order_types_[0],
+            volume      =   None,
+            price       =   None,
+            delta_timeframe_pair = delta_timeframe_pair_pseudos["mm"]
+        )
+        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    elif (sign == 0):
+        if check_open_positions(symbol):
+            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
+                return -1
+        if correlated(symbol, ele, opdict[timeframe_pseudo]['scores'],active_symbols):
+            return -1
+        so(
+            symbol      =   symbol,
+            ordertype   =   order_types_[1],
+            volume      =   None,
+            price       =   None,
+            delta_timeframe_pair = delta_timeframe_pair_pseudos["mm"]
+        )
+        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return 0
 
 def init_op_dict():
     global percs, special_percs
@@ -518,10 +623,7 @@ operating_dicts = {}
 def init_models(
         timeframe_pseudo,
         prediction_period, 
-        mean_period,
-        learning_rate, 
-        percentile,
-        modelfile_extension
+        mean_period
     ):
     global operating_dicts
     models = {}
@@ -531,7 +633,7 @@ def init_models(
     for r in ranges:
         for d in directions:
             key = f'model_{d}_{r}'
-            model_in_use = f"M{prediction_period}_{mean_period}_{learning_rate}_{percentile}_{d}_{r}_{ranges_equi[r]}{f'_{timeframe_pseudo}'*(timeframe_pseudo != 'h')}{modelfile_extension}"
+            _ , model_in_use = get_suffix(".", f"M{timeframe_pseudo}_{prediction_period}_{mean_period}_{operating_dicts[timeframe_pseudo]['learning_rates'][r]}_{d}_{r}_{ranges_equi[r]}_")
             print(model_in_use)
             models[timeframe_pseudo][key] = load_model(model_in_use)
 
@@ -561,10 +663,10 @@ def treatment(x, pse, timeframe_pseudo):
         if timeframe_pseudo not in treatments_returns[pse[x]]:
             treatments_returns[pse[x]][timeframe_pseudo] = {}
         treatments_returns[pse[x]][timeframe_pseudo]['res'] = set_preds(pse[x], operating_dicts[timeframe_pseudo]['preds'], operating_dicts[timeframe_pseudo]['models'], ele, operating_dicts[timeframe_pseudo]['prob_limits'], operating_dicts[timeframe_pseudo]['scores'])    
-        print(f"{treatments_returns[pse[x]][timeframe_pseudo]['res']}")
+        #print(f"{treatments_returns[pse[x]][timeframe_pseudo]['res']}")
     
     if ele:
-        treatments_returns[pse[x]][timeframe_pseudo]['r'] = execute_order(operating_dicts[timeframe_pseudo]['preds'], pse[x], ele, operating_dicts[timeframe_pseudo]['scores'], timeframe_pseudo)
+        treatments_returns[pse[x]][timeframe_pseudo]['r'] = execute_order(operating_dicts, pse[x], ele, timeframe_pseudo)
 
 
 def loop():
@@ -592,10 +694,7 @@ def main():
         init_models(
             timeframe_pseudo,
             prediction_period, 
-            mean_period,
-            learning_rate,
-            percentile,
-            modelfile_extension  
+            mean_period
         )
         init_env(
             delta_timeframe_pair_pseudos[timeframe_pseudo][1],

@@ -9,11 +9,11 @@ def to_float(val):
 deviation                   = 5
 
 win_loss_quotient           = 0.5
-equity_limit_ratio          = 0.1
+equity_limit_ratio          = 0.05
 goal                        = 1.1
 risk_level                  = 20.0
 accepted_risk_overrun       = 0.25
-limit_spread                = 0.03
+limit_spread                = 0.01
 max_spread                  = 0.15
 limit_correlation           = 0.2
 
@@ -24,7 +24,7 @@ defaultTradingMode          = 'swing'
 
 unfilled_order_lifespan_min = 5
 prediction_period           = 30 # in days
-hours_before_repeat_order   = 5
+hours_before_repeat_order   = 24
 mean_period                 = 50
 
 dashboard                   = {
@@ -54,82 +54,84 @@ dashboard                   = {
     'mean_period'                       : mean_period
 }
 
-prob_limits_h = {
-    # Models parameters
-    'bull_binary_wide_threshold'        : 0.5410273671465529, #  0.00959177 # 51.05457708 %
-    'bull_binary_bulk_threshold'        : 0.5601240442207156, # 0.00966633 # 58.28928918 %
-    'bull_binary_narrow_threshold'      : 0.5864701454549608, # 0.00974751 # 69.47593583 %
-    'bull_binary_inter_threshold'       : 0.6608582432204393, # 0.00294289 # 83.59900815 %
-    'bull_binary_short_threshold'       : 0.669481696448141, # 0.00296983 # 87.32888733 %
-
-    'bull_binary_wide_rev_threshold'    : 0.5410273671465529, #  0.00959177 # 51.05457708 %
-    'bull_binary_bulk_rev_threshold'    : 0.5601240442207156, # 0.00966633 # 58.28928918 %
-    'bull_binary_narrow_rev_threshold'  : 0.5864701454549608, # 0.00974751 # 69.47593583 %
-    'bull_binary_inter_rev_threshold'   : 0.6608582432204393, # 0.00294289 # 83.59900815 %
-    'bull_binary_short_rev_threshold'   : 0.669481696448141, # 0.00296983 # 87.32888733 %
-
-    'bear_binary_wide_threshold'        : 0.55, # 0.0
-    'bear_binary_bulk_threshold'        : 0.45818963200061946, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_threshold'      : 0.55, # 0.0
-    'bear_binary_inter_threshold'       : 0.55, # 0.0
-    'bear_binary_short_threshold'       : 0.5234204732099372, # 0.00180324 # 56.03000577 %
-
-    'bull_binary_wide_comb'             : 0.5410273671465529, # 0.00959177 # 4.30919591 %
-    'bull_binary_bulk_comb'             : 0.5443996788063195, # 0.17400235 # 54.79788598 %
-    'bull_binary_narrow_comb'           : 0.5426327002956575, # 0.17544586 # 57.59606871 %
-    'bull_binary_inter_comb'            : 0.5388572239431149, # 0.17655049 # 57.97718443 %
-    'bull_binary_short_comb'            : 0.5250615484040865, # 0.17814728 # 56.26422624 %
-
-    'bull_binary_wide_rev_comb'         : 0.5410273671465529, # 0.00959177 # 4.30919591 %
-    'bull_binary_bulk_rev_comb'         : 0.5474969152440783, # 0.11600018 # 25.92803184 %
-    'bull_binary_narrow_rev_comb'       : 0.5505109433060268, # 0.11696391 # 49.17049770 %
-    'bull_binary_inter_rev_comb'        : 0.5499325410510577, # 0.11770102 # 60.73482207 %
-    'bull_binary_short_rev_comb'        : 0.5330840969945617, # 0.11876520 # 43.55586909 % 0.669481696448141, # 0.02969208 # 73.82741188 %
-
-    'bear_binary_wide_comb'             : 0.55, # 0.0
-    'bear_binary_bulk_comb'             : 0.45818963200061946, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_comb'           : 0.55, # 0.0
-    'bear_binary_inter_comb'            : 0.55, # 0.0
-    'bear_binary_short_comb'            : 0.5142886711656096 # 0.00902938 # 53.80974371 %
+prob_limits_h12 = {
+    'bull_binary_short_threshold'       : 0.5392410706456066, # 0.5332410706456066, # 0,00244735 63.15789474 %
+    'bull_binary_short_rev_threshold'   : 0.5392410706456066, # 0.5332410706456066, # 0,00244735 63.15789474 %
+    'bull_binary_short_comb'            : 0.53608246678862,   # 0.53108246678862, # 0,00598957 62.36559140 %
+    'bull_binary_short_rev_comb'        : 0.53608246678862,   # 0.53108246678862, # 0,00598957 62.36559140 %
+    
+    'bear_binary_short_threshold'       : 0.5224809636477462, # 0.5124809636477462, # 0.00148244 53.26086957 %
+    'bear_binary_short_comb'            : 0.5122558303311716, # 0.00157912 54.08163265 % 0.5096337922503382, # 0.00391557 51.85185185 %
 }
 
+prob_limits_h4 = {
+    'bull_binary_short_threshold'       : 0.6106149845718837, # 0.6041442694063516, # 0.00118720 80.44444444 %
+    'bull_binary_short_rev_threshold'   : 0.6106149845718837, # 0.6041442694063516, # 0.00118720 80.44444444 %
+    'bull_binary_short_comb'            : 0.6019094306049278, # 0.5961690525666233, # 0.00326084 77.34627832 %
+    'bull_binary_short_rev_comb'        : 0.6019094306049278, # 0.5961690525666233, # 0.00326084 77.34627832 %
+
+    'bear_binary_short_threshold'       : 0.5441958523248068, # 0.0007 52.69230769 % 0.5370415609803433, # 0.5270415609803433, # 0,00136903 58.13953488 %
+    'bear_binary_short_comb'            : 0.5366944232231559  # 0.00137187 52.69230769 % 0.5248195848692672  # 0.00203763 53.12500000 %
+}
+
+prob_limits_h3 = {
+    'bull_binary_narrow_threshold'      : 0.5,
+    'bull_binary_narrow_rev_threshold'  : 0.5,
+    'bull_binary_narrow_comb'           : 0.5,
+    'bull_binary_narrow_rev_comb'       : 0.5,
+
+    'bear_binary_narrow_threshold'      : 0.5,
+    'bear_binary_narrow_comb'           : 0.5,
+
+
+    'bull_binary_inter_threshold'       : 0.5,
+    'bull_binary_inter_rev_threshold'   : 0.5,
+    'bull_binary_inter_comb'            : 0.5,
+    'bull_binary_inter_rev_comb'        : 0.5,
+
+    'bear_binary_inter_threshold'       : 0.5,
+    'bear_binary_inter_comb'            : 0.5, 
+}
+
+
+prob_limits_h8 = {
+    'bull_binary_short_threshold'       : 0.6085905684546528, # 0.6080905684546528, # 0.00151824 62.23776224 %
+    'bull_binary_short_rev_threshold'   : 0.6085905684546528, # 0.00151824 62.23776224 % 
+    'bull_binary_short_comb'            : 0.6080905684546528, # 0.00241007 66.96035242 % 
+    'bull_binary_short_rev_comb'        : 0.6080905684546528, # 0.00241007 66.96035242 % 
+
+    'bear_binary_short_threshold'       : 0.5277568889405015, # 0.00139084 53.43511450 %
+    'bear_binary_short_comb'            : 0.5255484240169545  # 0.00234637 51.58371041 %
+}
+
+prob_limits_h6 = {
+    'bull_binary_short_threshold'       : 0.6091442694063516, # 0.6041442694063516, # 0,00194994 70.96774194 %
+    'bull_binary_short_rev_threshold'   : 0.6091442694063516, # 0.6041442694063516, # 0,00194994 70.96774194 %
+    'bull_binary_short_comb'            : 0.6011690525666233, # 0.5961690525666233, # 0,0048765 70.26476578 %
+    'bull_binary_short_rev_comb'        : 0.6011690525666233, # 0.5961690525666233, # 0,0048765 70.26476578 %
+
+    'bear_binary_short_threshold'       : 0.5370415609803433, # 0.5270415609803433, # 0,00136903 58.13953488 %
+    'bear_binary_short_comb'            : 0.5248195848692672  # 0.00203763 53.12500000 %
+}
+
+prob_limits_h = {
+    'bull_binary_short_threshold'       : 0.5857174235645772, # 0.5807174235645772, # 0,00154621 82.30215827 %
+    'bull_binary_short_rev_threshold'   : 0.5857174235645772, # 0.5807174235645772, # 0,00154621 82.30215827 %
+    'bull_binary_short_comb'            : 0.5716092954776367,  # 0.5666092954776367,  # 0,00524377 78.19261773 %
+    'bull_binary_short_rev_comb'        : 0.5716092954776367,  # 0.5666092954776367,  # 0,00524377 78.19261773 %
+
+    'bear_binary_short_threshold'       : 0.5276190522977312, # 0.5226190522977312, # 0,00095217 57.94392523 %
+    'bear_binary_short_comb'            : 0.5236698965611963  # 0.5186698965611963  # 0,00476085 54.57943925 %
+} 
+
 prob_limits_mm = {
-    # Models parameters
-    'bull_binary_wide_threshold'        : 0.49854904516036763,# 0.00204688 63.74611935 %
-    'bull_binary_bulk_threshold'        : 0.4976227593850317, # 0.00203893 63.91966759 %
-    'bull_binary_narrow_threshold'      : 0.49915087102411126,# 0.00101376 72.56267409 % 0.5864701454549608, # 0.00974751 69.47593583 %
-    'bull_binary_inter_threshold'       : 0.5244010163925317, # 0.00101373 77.50696379 % 0.6608582432204393, # 0.00294289 83.59900815 %
-    'bull_binary_short_threshold'       : 0.5288713666589832, # 0.00100453 80.74490513 %
+    'bull_binary_short_threshold'       : 0.5246555490752431, # 0.5196555490752431, # 0,00098558 60.88709677 %
+    'bull_binary_short_rev_threshold'   : 0.5246555490752431, # 0.5196555490752431, # 0,00098558 60.88709677 %
+    'bull_binary_short_comb'            : 0.5226691492884165, # 0.5176691492884165, # 0,00492392 59.24132365 %
+    'bull_binary_short_rev_comb'        : 0.5226691492884165, # 0.5176691492884165, # 0,00492392 59.24132365 %
 
-    'bull_binary_wide_rev_threshold'    : 0.49854904516036763,# 0.00204688 63.74611935 %
-    'bull_binary_bulk_rev_threshold'    : 0.4976227593850317, # 0.00203893 63.91966759 %
-    'bull_binary_narrow_rev_threshold'  : 0.49915087102411126,# 0.00101376 72.56267409 % 0.5864701454549608, # 0.00974751 69.47593583 %
-    'bull_binary_inter_rev_threshold'   : 0.5244010163925317, # 0.00101373 77.50696379 % 0.6608582432204393, # 0.00294289 83.59900815 %
-    'bull_binary_short_rev_threshold'   : 0.5288713666589832, # 0.00100453 80.74490513 %
-
-    'bear_binary_wide_threshold'        : 0.55, # 0.0
-    'bear_binary_bulk_threshold'        : 0.55, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_threshold'      : 0.55, # 0.0
-    'bear_binary_inter_threshold'       : 0.5015384924332926, # 0.00001977 57.14285714 %
-    'bear_binary_short_threshold'       : 0.5234204732099372, # 0.00009318 59.09090909 %
-
-    'bull_binary_wide_comb'             : 0.4979320762750071, # 0.12277105 55.31196623 %
-    'bull_binary_bulk_comb'             : 0.4968913861987393, # 0.12230493 55.35165901 %
-    'bull_binary_narrow_comb'           : 0.4969840647057671, # 0.12180755 56.55003738 %
-    'bull_binary_inter_comb'            : 0.5048632626815343, # 0.12152738 58.07585289 % 0.5388572239431149, # 0.17655049 57.97718443 %
-    'bull_binary_short_comb'            : 0.5092061166097849, # 0.12044072 54.92717522 % 0.5132003437379862, # 0.05018463 58.14097424 %
-
-    'bull_binary_wide_rev_comb'         : 0.4979320762750071, # 0.12277105 55.31196623 % 0.4980866612480027, # 0.05115854 57.46660042 % 0.4979320762750071, # 0.12277105 55.31196623 %
-    'bull_binary_bulk_rev_comb'         : 0.4968913861987393, # 0.12230493 55.35165901 % 0.49707299459987403,# 0.05095144 57.84062409 % 0.4968913861987393, # 0.12230493 55.35165901 %
-    'bull_binary_narrow_rev_comb'       : 0.4969840647057671, # 0.12180755 56.55003738 % 0.4974497259699691, # 0.05074885 60.16748741 % 0.4969840647057671, # 0.12180755 56.55003738 %
-    'bull_binary_inter_rev_comb'        : 0.5048632626815343, # 0.12152738 58.07585289 % 0.509151161171405,  # 0.05063658 63.21710884 % 0.5048632626815343, # 0.12152738 58.07585289 % 0.5388572239431149, # 0.17655049 57.97718443 %
-    'bull_binary_short_rev_comb'        : 0.5092061166097849, # 0.12044072 54.92717522 % 0.5132003437379862, # 0.05018463 58.14097424 % 0.5092061166097849, # 0.12044072 54.92717522 % 0.5132003437379862, # 0.05018463 58.14097424 %
-
-    'bear_binary_wide_comb'             : 0.55, # 0.0
-    'bear_binary_bulk_comb'             : 0.55, # 0.00304660 51.64271047 %
-    'bear_binary_narrow_comb'           : 0.55, # 0.0
-    'bear_binary_inter_comb'            : 0.5015384924332926, # 0.00001977 57.14285714 %
-    'bear_binary_short_comb'            : 0.5128124231821756  # 0.00027813 56.09137056 %
+    'bear_binary_short_threshold'       : 0.513721826181881, # 0.508721826181881, # 0,00184796 53.76344086 %
+    'bear_binary_short_comb'            : 0.5122449507474112  # 0.5072449507474112  # 0,00462586 54.03780069 %
 }
 
 initial_preds = {
@@ -213,6 +215,7 @@ delta_timeframe_pair_pseudos = {
 }
 
 percs = [
+    'learning_rates'    ,
     'preds'             ,
     'models'            ,
     'prob_limits'       ,
@@ -223,13 +226,30 @@ percs = [
 ]
 
 special_percs = {
-	'h' : {'prob_limits' : prob_limits_h},
-	'mm': {'prob_limits' : prob_limits_mm}
+    #'mm' : {'prob_limits' : prob_limits_mm },
+	#'h'  : {'prob_limits' : prob_limits_h  },
+    'h3' : {
+        'prob_limits' : prob_limits_h3 , 
+        'learning_rates' : {
+            'inter' : 0.2, 
+            'narrow' : 0.1
+        }
+    },
+    #'h4' : {'prob_limits' : prob_limits_h4 },
+	#'h6' : {'prob_limits' : prob_limits_h6 },
+    #'h8' : {'prob_limits' : prob_limits_h8 },
+    #'h12': {'prob_limits' : prob_limits_h12}
 }
 
 used_timeframes = {
-    'mm' : min15,
-    'h'  : hourly
+    #'mm' : min15 ,
+    #'h'  : hourly,
+    'h3' : hour3 ,
+    #'h4' : hour4 ,
+    
+    #'h6' : hour6 ,
+    #'h8' : hour8 ,
+    #'h12': hour12
 }
 
 eur_conv_pairs = {
@@ -243,35 +263,35 @@ eur_conv_pairs = {
 
 
 orders_list = [
-    'buy_now',
-    'sell_now',
-    'buy',
-    'sell',
-    'buy_limit',
-    'sell_limit',
-    'buy_wide',
-    'sell_wide',
-    'buy_market',
+    'buy_now'    ,
+    'sell_now'   ,
+    'buy'        ,
+    'sell'       ,
+    'buy_limit'  ,
+    'sell_limit' ,
+    'buy_wide'   ,
+    'sell_wide'  ,
+    'buy_market' ,
     'sell_market',
-    'buy_stop',
+    'buy_stop'   ,
     'sell_stop'
 ]
 
 symbols_list = [
-    'EURUSD','EURGBP','EURCAD','EURAUD','EURCHF','EURNZD','EURSGD',
-    'USDCHF','USDCAD','USDJPY','USDSGD',
-    'GBPCHF','GBPAUD','GBPCAD','GBPNZD','GBPUSD','GBPJPY','GBPSGD',
+    'EURUSD','EURGBP' ,'EURCAD' ,'EURAUD','EURCHF' ,'EURNZD','EURSGD',
+    'USDCHF','USDCAD' ,'USDJPY' ,'USDSGD',
+    'GBPCHF','GBPAUD' ,'GBPCAD' ,'GBPNZD','GBPUSD' ,'GBPJPY','GBPSGD',
     'NZDUSD', 'NZDCAD', 'NZDCHF','NZDJPY', 'NZDSGD',
-    'AUDNZD', 'AUDCAD', 'AUDCHF','AUDUSD','AUDSGD','AUDJPY',
-    'CADCHF','CADJPY',
-    'BTCUSD','XRPUSD','ETHUSD',
-    'eu', 'eg', 'ec', 'ea', 'ech', 'en','es',
-    'uch', 'uc','uj','us',
-    'gch', 'ga', 'gc', 'gn', 'gu','gj','gs',
-    'nu','nc','nch','nj','ns'
-    'an','ac','ach','au','as','aj'
-    'cch','cj'
-    'bu', 'xu', 'etu', 'dou', 'du', 'adu', 'lu', 'dau', 'xmu', 'neu'
+    'AUDNZD', 'AUDCAD', 'AUDCHF','AUDUSD','AUDSGD' ,'AUDJPY',
+    'CADCHF','CADJPY' ,
+    'BTCUSD','XRPUSD' ,'ETHUSD' ,
+    'eu' , 'eg', 'ec', 'ea', 'ech', 'en','es',
+    'uch', 'uc','uj' ,'us' ,
+    'gch', 'ga', 'gc', 'gn', 'gu' ,'gj' ,'gs',
+    'nu','nc','nch','nj','ns',
+    'an','ac','ach','au','as','aj',
+    'cch','cj' ,
+    'bu' , 'xu', 'etu', 'dou', 'du', 'adu', 'lu', 'dau', 'xmu', 'neu'
 ]
 demo = False
 #34
@@ -363,7 +383,7 @@ period = 24 * prediction_period
 mperiod = 24 * mean_period
 
 testnum = 25
-learning_rate = 0.0003
+learning_rate = 0.1
 max_depth = 7
 num_boost_round = 1000000
 phases = ['train','test']
@@ -383,10 +403,10 @@ directions = [
     'bear'
 ]
 ranges = [
-    'bulk',
+    #'bulk',
     'narrow',
     'inter',
-    'short'
+    #'short'
 ]
 
 ranges_equi = {
