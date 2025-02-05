@@ -37,7 +37,14 @@ class MaxPositionsException(Exception):
     """Exception raised when the maximum number of positions is reached."""
     def __init__(self, positions, message=f"The maximum number of positions is reached ({floor(100.0 / dashboard["risk_level"])})"):
         self.positions = positions
-        self.message = f"{message}. Spread: {self.positions}"
+        self.message = f"{message}. Orders: {self.positions}"
+        super().__init__(self.message)
+
+class PendingOrderInlineException(Exception):
+    """Exception raised when the maximum number of positions is reached."""
+    def __init__(self, symbol, message=f"An order already exists for that symbol."):
+        self.symbol = symbol
+        self.message = f"{message}. Symbol: {self.symbol}"
         super().__init__(self.message)
 
 class UnicityError(Exception):

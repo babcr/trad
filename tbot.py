@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 from time import sleep
 from numpy import void, float64
 from so import main as so
-from tradautotools import init_metatrader_connexion, close_metatrader_connexion, get_suffix
-from tradparams import floor, order_types_, period, mperiod, pseudos, pseudos_we, mt5, ranges_equi, prediction_period, mean_period, learning_rate, percentile, modelfile_extension
+from tradautotools import init_metatrader_connexion, close_metatrader_connexion, get_suffix, PendingOrderInlineException, MaxPositionsException
+from tradparams import floor, order_types_, period, mperiod, pseudos, pseudos_we, mt5, ranges_equi, prediction_period, mean_period
 from tradparams import limit_correlation, dashboard, delta_timeframe_pair_pseudos
 from tradparams import unfilled_order_lifespan_min, hours_before_repeat_order
-from tradparams import percs, special_percs, used_timeframes, ranges, directions, modes, initial_preds
+from tradparams import no_favorable_ranges, rev_allowed, standard_time_format, ref_tf_pseudo, percs, special_percs, used_timeframes, ranges, directions, modes, initial_preds, last_minuts_execution_window
 from tradparams import xgb
 import copy
 from numpy import ndarray,corrcoef
@@ -24,7 +24,7 @@ end_of_sunday = None
 iteration_time = datetime.now()
 first = True
 
-def calculate_candlestick_score_realtime(symbol, last_candle, base_sum_supports, base_sums, meanperiod=mperiod, new=True):
+def calculate_candlestick_score_realtime(symbol, last_candle, base_sum_supports, base_sums, vol_base_sum_supports, vol_base_sums, meanperiod=mperiod, new=True):
     """
     Calcule le score de la dernière bougie dans un ensemble de données de bougies d'une heure sur 24h.
 
@@ -38,27 +38,41 @@ def calculate_candlestick_score_realtime(symbol, last_candle, base_sum_supports,
     close_price = last_candle['close']
     high_price = last_candle['high']
     low_price = last_candle['low']
+    volume = last_candle['tick_volume']
 
     if new:
         try:
             base_sum_supports[symbol].append(high_price - low_price)
             base_sums[symbol] += base_sum_supports[symbol][-1]
+            vol_base_sum_supports[symbol].append(volume)
+            vol_base_sums[symbol] += vol_base_sum_supports[symbol][-1]
         except KeyError:
             base_sum_supports[symbol] = deque([high_price - low_price])
             base_sums[symbol] = float64(base_sum_supports[symbol][-1])
-
+            vol_base_sum_supports[symbol] = deque([volume])
+            vol_base_sums[symbol] = float64(vol_base_sum_supports[symbol][-1])
 
         if len(base_sum_supports[symbol]) > meanperiod:
             base_sums[symbol] -= base_sum_supports[symbol].popleft()
+            vol_base_sums[symbol] -= vol_base_sum_supports[symbol].popleft()
     else:
         base_sums[symbol] -= base_sum_supports[symbol][-1]
         base_sum_supports[symbol][-1] = high_price - low_price
         base_sums[symbol] += base_sum_supports[symbol][-1]
 
+        vol_base_sums[symbol] -= vol_base_sum_supports[symbol][-1]
+        vol_base_sum_supports[symbol][-1] = volume
+        vol_base_sums[symbol] += vol_base_sum_supports[symbol][-1]
+
     if type(base_sums[symbol]) == ndarray:
         if base_sums[symbol].ndim == 1:
             base_sums[symbol] = base_sums[symbol][0]
+    if type(vol_base_sums[symbol]) == ndarray:
+        if vol_base_sums[symbol].ndim == 1:
+            vol_base_sums[symbol] = vol_base_sums[symbol][0]
+
     base = base_sums[symbol] / len(base_sum_supports[symbol])
+    vol_base = vol_base_sums[symbol] / len(vol_base_sum_supports[symbol])
     # Calcul de la longueur du corps de la dernière bougie
     body_length = close_price - open_price
 
@@ -73,7 +87,7 @@ def calculate_candlestick_score_realtime(symbol, last_candle, base_sum_supports,
     # Calcul du score
     if total_length == 0:
         return 0  # Pour éviter la division par zéro si la longueur totale est nulle
-    score = body_length * abs(body_length) / total_length / base
+    score = (body_length / base) * (abs(body_length) / total_length)  * (volume / vol_base)
     if type(score) == ndarray:
         if score.ndim == 1:
             score = score[0]
@@ -113,7 +127,7 @@ def load_candles(symbol, timeframe, back_period=mperiod):
     return cands
 
 
-def load_candle(symbol, candles, scores, base_sum_supports, base_sums, timeframe):
+def load_candle(symbol, candles, scores, base_sum_supports, base_sums, vol_base_sum_supports, vol_base_sums, timeframe):
     # Initialiser MetaTrader5
     init_metatrader_connexion()
 
@@ -145,24 +159,24 @@ def load_candle(symbol, candles, scores, base_sum_supports, base_sums, timeframe
 
 
 
-    #date_object = datetime.strptime(date_string, "%Y-%m-%d %H:%M:%S")
+    #date_object = datetime.strptime(date_string, standard_time_format)
     # Obtenir l'heure de la bougie
     current_candle_time = datetime.fromtimestamp(candle[0][0])
 
-    #t = minute_in_year_normalization(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #t = minute_in_year_normalization(datetime.now().strftime(standard_time_format))
+    t = datetime.now().strftime(standard_time_format)
     # Vérifier si la bougie est nouvelle ou une mise à jour
     if last_candle_time is None:
         #print("Première vérification : Bougie actuelle chargée.")
         candles[symbol] = deque([candle])
-        scores[symbol] = deque([calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums)])
+        scores[symbol] = deque([calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums, vol_base_sum_supports, vol_base_sums)])
         present_times[symbol] = t
     elif current_candle_time > last_candle_time:
         #print(f"Nouvelle bougie détectée : {datetime.fromtimestamp(current_candle_time)}")
         if type(candles[symbol]) == ndarray:
             candles[symbol] = deque(candles[symbol])
         candles[symbol].append(candle)
-        scores[symbol].append(calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums))
+        scores[symbol].append(calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums, vol_base_sum_supports, vol_base_sums))
         present_times[symbol] = t
         if len(scores[symbol]) > period:
             scores[symbol].popleft()
@@ -174,7 +188,7 @@ def load_candle(symbol, candles, scores, base_sum_supports, base_sums, timeframe
         candles[symbol].pop()
         candles[symbol].append(candle)
         scores[symbol].pop()
-        new = calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums, new=False)
+        new = calculate_candlestick_score_realtime(symbol, candle, base_sum_supports, base_sums, vol_base_sum_supports, vol_base_sums, new=False)
         scores[symbol].append(new)
         present_times[symbol] = t
 
@@ -182,14 +196,14 @@ def load_candle(symbol, candles, scores, base_sum_supports, base_sums, timeframe
     return scores[symbol]
 
 
-def init_env(timeframe, candles, scores, base_sum_supports, base_sums):
-    t = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def init_env(timeframe, candles, scores, base_sum_supports, base_sums, vol_base_sum_supports, vol_base_sums):
+    t = datetime.now().strftime(standard_time_format)
     for x in pseudos:
         candles[pseudos[x]] = load_candles(pseudos[x], timeframe=timeframe)
         scores[pseudos[x]] = deque()
         for i in range(0, period):
             scores[pseudos[x]].append(
-                calculate_candlestick_score_realtime(pseudos[x], candles[pseudos[x]][mperiod - period + i], base_sum_supports, base_sums)
+                calculate_candlestick_score_realtime(pseudos[x], candles[pseudos[x]][mperiod - period + i], base_sum_supports, base_sums, vol_base_sum_supports, vol_base_sums)
             )
             present_times[pseudos[x]] = t
 
@@ -202,32 +216,13 @@ def load_element(symbol, scores):
 
 def apply_model(model, element):
     dtest = xgb.DMatrix(element)
-    # Faire une prédiction
     preds = model.predict(dtest)
-
-    # Exemple de conversion des scores de prédiction (logits) en probabilités avec softmax
-    '''
-    logits = model.predict(dtest, output_margin=True)  # Obtenez les scores bruts
-    preds_prob = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
-    preds_prob_mean = np.mean(preds_prob, axis=0)
-
-    x = (preds_prob[:,0] > preds_prob_mean[0]*cert_deg) & (np.array(preds.ravel()) == 0)
-    '''
     return preds
 
-def get_pred(bull_pred, bear_pred, scale, keyword, prob_limits, rev=False):
-    if   bull_pred > prob_limits[f'bull_binary_{scale}_{'rev_' * rev}{keyword}'] and bear_pred <= prob_limits[f'bear_binary_{scale}_{keyword}']:
+def get_pred(bull_pred, bear_pred, rang, mode, prob_limits, rev=False):
+    if   bull_pred > prob_limits[f'bull_binary_{rang}_{'rev_' * rev}{mode}'] and bear_pred <= prob_limits[f'bear_binary_{rang}_{              mode}']:
         pred = 2
-    elif bear_pred > prob_limits[f'bear_binary_{scale}_{keyword}'] and bull_pred <= prob_limits[f'bull_binary_{scale}_{'rev_' *  rev}{keyword}']:
-        pred = 0
-    else:
-        pred = 1
-    return pred
-
-def get_pred_rev(bull_pred, bear_pred, scale, keyword):
-    if   bull_pred > dashboard[f'bull_binary_{scale}_rev_{keyword}'] and bear_pred <= dashboard[f'bear_binary_{scale}_{keyword}']:
-        pred = 2
-    elif bear_pred > dashboard[f'bear_binary_{scale}_{keyword}'] and bull_pred <= dashboard[f'bull_binary_{scale}_rev_{keyword}']:
+    elif bear_pred > prob_limits[f'bear_binary_{rang}_{              mode}'] and bull_pred <= prob_limits[f'bull_binary_{rang}_{'rev_' * rev}{mode}']:
         pred = 0
     else:
         pred = 1
@@ -329,8 +324,8 @@ def is_weekend():
         start_of_friday = datetime.combine(today - timedelta(days=(today.weekday()-4)), datetime.min.time()) + timedelta(hours=11, minutes=59, seconds=59)
         end_of_sunday = datetime.combine(today + timedelta(days=(6 - today.weekday())), datetime.min.time()) + timedelta(hours=22, minutes=59, seconds=59)
 
-    #print(f'start_of_friday = {start_of_friday.strftime("%Y-%m-%d %H:%M:%S")}')
-    #print(f'end_of_sunday = {end_of_sunday.strftime("%Y-%m-%d %H:%M:%S")}')
+    #print(f'start_of_friday = {start_of_friday.strftime(standard_time_format)}')
+    #print(f'end_of_sunday = {end_of_sunday.strftime(standard_time_format)}')
     return start_of_friday <= now < end_of_sunday
 
 def corr(v,w):
@@ -371,7 +366,7 @@ def get_active_symbols():
     close_metatrader_connexion()
 
     # Return the unique symbols as a list
-    return list(symbols)
+    return list(symbols), len(positions)+len(orders)
 
 def correlated(symbol, ele, scores, active_symbols):
     for op in active_symbols: #get_active_symbols():
@@ -384,8 +379,7 @@ def correlated(symbol, ele, scores, active_symbols):
 def is_in_last_seconds_of_x_minutes(x):
     now = datetime.now()
     y = 60 * now.hour + now.minute
-
-    return True#y % x == x - 1 or y % x == x - 2
+    return y % x >= x - last_minuts_execution_window
 
 def set_primary_preds(symbol : str, preds : dict, models : dict, ele : list, direction : str, rang : str, rev : bool):
     for x in directions:
@@ -410,194 +404,144 @@ def set_preds(symbol : str, preds : dict, models : dict, ele : list,  prob_limit
             set_secondary_preds(symbol, preds, mode, rang, prob_limits, True)
 
 
-    preds[symbol]["pred"] = None
-    if      preds[symbol]["pred_narrow"] == 2 or preds[symbol]["pred_inter"] == 2:
+
+
+    preds[symbol]["pred"] = 0
+
+    for rang in ranges:
+        preds[symbol]["pred"] += preds[symbol][f"pred_{rang}"]
+
+    #print(f"preds[symbol][\"pred\"] = {preds[symbol]["pred"]}")
+    if   preds[symbol]["pred"] >= len(ranges) + no_favorable_ranges: #(n + p)
         preds[symbol]["pred"] = 2
-    elif    preds[symbol]["pred_narrow"] == 0:
-        preds[symbol]["pred"] = 1 ####
+    elif preds[symbol]["pred"] <= len(ranges) - no_favorable_ranges: #(n - p)
+        preds[symbol]["pred"] = 0
     else:
         preds[symbol]["pred"] = 1
 
-    preds[symbol]["pred_"] = None
-    if      preds[symbol]["pred_narrow_"] == 2:
+    preds[symbol]["pred_"] = 0
+
+    for rang in ranges:
+        preds[symbol]["pred_"] += preds[symbol][f"pred_{rang}_"]
+
+    #print(f"preds[symbol][\"pred_\"] = {preds[symbol]["pred_"]}")
+    if   preds[symbol]["pred_"] >= len(ranges) + no_favorable_ranges:
         preds[symbol]["pred_"] = 2
-    elif    preds[symbol]["pred_narrow_"] == 0:
-        preds[symbol]["pred_"] = 1 ####
+    elif preds[symbol]["pred_"] <= len(ranges) - no_favorable_ranges:
+        preds[symbol]["pred_"] = 0 
     else:
         preds[symbol]["pred_"] = 1
 
-    preds[symbol]["pred_rev"] = None
-    if      preds[symbol]["pred_rev_narrow"] == 2 or preds[symbol]["pred_rev_inter"] == 2:
+    if rev_allowed:
         preds[symbol]["pred_rev"] = 0
-    elif    preds[symbol]["pred_rev_narrow"] == 0:
-        preds[symbol]["pred_rev"] = 1
-    else:
-        preds[symbol]["pred_rev"] = 1
 
-    preds[symbol]["pred_rev_"] = None
-    if      preds[symbol]["pred_rev_narrow_"] == 2:
+        for rang in ranges:
+            preds[symbol]["pred_rev"] += preds[symbol][f"pred_rev_{rang}"]
+
+        #print(f"preds[symbol][\"pred_rev\"] = {preds[symbol]["pred_rev"]}")
+        if preds[symbol]["pred_rev"] >= len(ranges) + no_favorable_ranges:
+            preds[symbol]["pred_rev"] = 0
+        else:
+            preds[symbol]["pred_rev"] = 1
+
         preds[symbol]["pred_rev_"] = 0
-    elif    preds[symbol]["pred_rev_narrow_"] == 0:
-        preds[symbol]["pred_rev_"] = 1
-    else:
-        preds[symbol]["pred_rev_"] = 1
+        
+        for rang in ranges:
+            preds[symbol]["pred_rev_"] += preds[symbol][f"pred_rev_{rang}_"]
 
+        #print(f"preds[symbol][\"pred_rev_\"] = {preds[symbol]["pred_rev_"]}")
+        if preds[symbol]["pred_rev_"] >= len(ranges) + no_favorable_ranges:
+            preds[symbol]["pred_rev_"] = 0
+        else:
+            preds[symbol]["pred_rev_"] = 1
 
     return f"{symbol[:6]} {str(preds[symbol]["pred"] )} {str(preds[symbol]["pred_short"] )} - {str(preds[symbol]["pred_"] )} {str(preds[symbol]["pred_short_"] )} | {str(preds[symbol]["pred_rev"])} {str(preds[symbol]["pred_rev_short"] )} - {str(preds[symbol]["pred_rev_"] )} {str(preds[symbol]["pred_rev_short_"] )}: {scores[symbol][-1]}"
 
-"""
-def execute_order2(preds, symbol, ele, scores, timeframe_pseudo='h'):
-    global last_orders
-    if symbol not in last_orders:
-        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    if check_pending_orders(symbol):
-        if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
-            cancel_unfilled_orders(symbol)
-        else:
-            return -1
-
-    if ((preds[symbol]["pred"] == 2 or preds[symbol]["pred_"] == 2) and (preds[symbol]["pred_rev"] > 0 and preds[symbol]["pred_rev_"] > 0)) or ((preds[symbol]["pred_rev"] == 2 or preds[symbol]["pred_rev_"] == 2) and (preds[symbol]["pred"] > 0 and preds[symbol]["pred_"] > 0)):
-        if check_open_positions(symbol):
-            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                return -1
-        if correlated(symbol, ele, scores):
-            return -1
-        so(
-            symbol      =   symbol,
-            ordertype   =   order_types_[0],
-            volume      =   None,
-            price       =   None,
-            delta_timeframe_pair = delta_timeframe_pair_pseudos[timeframe_pseudo]
-        )
-        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    elif (
-        (preds[symbol]["pred"] == 0 or preds[symbol]["pred_"] == 0) 
-        and (preds[symbol]["pred_rev"] < 2 and preds[symbol]["pred_rev_"] < 2)
-        ) or (
-            (preds[symbol]["pred_rev"] == 0 or preds[symbol]["pred_rev_"] == 0) and 
-            (preds[symbol]["pred"] < 2 and preds[symbol]["pred_"] < 2)
-        ):
-        if check_open_positions(symbol):
-            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                return -1
-        if correlated(symbol, ele, scores):
-            return -1
-        so(
-            symbol      =   symbol,
-            ordertype   =   order_types_[1],
-            volume      =   None,
-            price       =   None,
-            delta_timeframe_pair = delta_timeframe_pair_pseudos[timeframe_pseudo]
-        )
-        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    return 0
-"""
-
 def get_signal(opdict, symbol):
-    bull = 0
-    bear = 0
-    bull_ = 0
-    bear_ = 0
+    bull      = 0
+    bear      = 0
+    bull_     = 0
+    bear_     = 0
 
-    bull_rev = 0
-    bear_rev = 0
+    bull_rev  = 0
+    bear_rev  = 0
     bull_rev_ = 0
     bear_rev_ = 0
     disp = f"{symbol[:6]}"
-    
+    #print(opdict)
     for ut in used_timeframes:
         if symbol in opdict[ut]['preds']:
             disp += f" {ut} {opdict[ut]['preds'][symbol]["pred"]}{opdict[ut]['preds'][symbol]["pred_"]}"
-            if opdict[ut]['preds'][symbol]["pred"] == 2:
-                bull += 1
-            if opdict[ut]['preds'][symbol]["pred"] == 0:
-                bear += 1
+            if opdict[ut]['preds'][symbol]["pred" ] == 2:
+                bull  += 1
+            if opdict[ut]['preds'][symbol]["pred" ] == 0:
+                bear  += 1
             if opdict[ut]['preds'][symbol]["pred_"] == 2:
                 bull_ += 1
             if opdict[ut]['preds'][symbol]["pred_"] == 0:
                 bear_ += 1
-        if symbol in opdict[ut]['preds']:
-            disp += f" - {opdict[ut]['preds'][symbol]["pred_rev"]}{opdict[ut]['preds'][symbol]["pred_rev_"]}"
-            if opdict[ut]['preds'][symbol]["pred_rev"] == 2:
-                bull_rev += 1
-            if opdict[ut]['preds'][symbol]["pred_rev"] == 0:
-                bear_rev += 1
-            if opdict[ut]['preds'][symbol]["pred_rev_"] == 2:
-                bull_rev_ += 1
-            if opdict[ut]['preds'][symbol]["pred_rev_"] == 0:
-                bear_rev_ += 1
+
+            if rev_allowed:
+                disp += f" - {opdict[ut]['preds'][symbol]["pred_rev"]}{opdict[ut]['preds'][symbol]["pred_rev_"]}"
+                if opdict[ut]['preds'][symbol]["pred_rev" ] == 2:
+                    bull_rev  += 1
+                if opdict[ut]['preds'][symbol]["pred_rev" ] == 0:
+                    bear_rev  += 1
+                if opdict[ut]['preds'][symbol]["pred_rev_"] == 2:
+                    bull_rev_ += 1
+                if opdict[ut]['preds'][symbol]["pred_rev_"] == 0:
+                    bear_rev_ += 1
 
     print(disp)
-    if bull > 0 and bear == 0:
+    if bull  > 0 and bear  == 0:
         return 2
-    if bear > 0 and bull == 0:
+    if bear  > 0 and bull  == 0:
         return 0
     if bull_ > 1 and bear_ == 0:
         return 2
     if bear_ > 1 and bull_ == 0:
         return 0
-
-    if bull_rev > 0 and bear_rev == 0:
-        return 2
-    if bear_rev > 0 and bull_rev == 0:
-        return 0
-    if bull_rev_ > 1 and bear_rev_ == 0:
-        return 2
-    if bear_rev_ > 1 and bull_rev_ == 0:
-        return 0
+    
+    if rev_allowed:
+        if bull_rev  > 0 and bear_rev  == 0:
+            return 2
+        if bear_rev  > 0 and bull_rev  == 0:
+            return 0
+        if bull_rev_ > 1 and bear_rev_ == 0:
+            return 2
+        if bear_rev_ > 1 and bull_rev_ == 0:
+            return 0
     return 1
 
 
 def execute_order(opdict, symbol, ele, timeframe_pseudo='h'):
     global last_orders
+    global first
     if symbol not in last_orders:
-        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        last_orders[symbol] = datetime.now().strftime(standard_time_format)
 
     if check_pending_orders(symbol):
-        if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") > timedelta(minutes=unfilled_order_lifespan_min):
+        if datetime.now() - datetime.strptime(last_orders[symbol], standard_time_format) > timedelta(minutes=unfilled_order_lifespan_min):
             cancel_unfilled_orders(symbol)
         else:
-            return -1
-        
-    active_symbols = get_active_symbols()
-    nb_active_symbols = len(active_symbols)
-    if nb_active_symbols >= floor(100.0 / dashboard["risk_level"]):
-        return -1 # raise MaxPositionsException(nb_active_symbols)
+            raise PendingOrderInlineException(symbol)
     
     sign = get_signal(opdict, symbol)
-    if (sign == 2):
-        if check_open_positions(symbol):
-            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                return -1
-        if correlated(symbol, ele, opdict[timeframe_pseudo]['scores'],active_symbols):
-            return -1
-        so(
-            symbol      =   symbol,
-            ordertype   =   order_types_[0],
-            volume      =   None,
-            price       =   None,
-            delta_timeframe_pair = delta_timeframe_pair_pseudos["mm"]
-        )
-        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    elif (sign == 0):
-        if check_open_positions(symbol):
-            if datetime.now() - datetime.strptime(last_orders[symbol], "%Y-%m-%d %H:%M:%S") < timedelta(hours=hours_before_repeat_order):
-                return -1
-        if correlated(symbol, ele, opdict[timeframe_pseudo]['scores'],active_symbols):
-            return -1
-        so(
-            symbol      =   symbol,
-            ordertype   =   order_types_[1],
-            volume      =   None,
-            price       =   None,
-            delta_timeframe_pair = delta_timeframe_pair_pseudos["mm"]
-        )
-        last_orders[symbol] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if sign in (2,0) and not first:
+        active_symbols, nb_of_orders = get_active_symbols()
 
+        if nb_of_orders >= floor(100.0 / dashboard["risk_level"]):
+            raise MaxPositionsException(nb_of_orders)
+        if datetime.now() - datetime.strptime(last_orders[symbol], standard_time_format) < timedelta(hours=hours_before_repeat_order):
+            if check_open_positions(symbol) or correlated(symbol, ele, opdict[timeframe_pseudo]['scores'], active_symbols):
+                return -1
+        so(
+            symbol               = symbol,
+            ordertype            = order_types_[int(1 - sign / 2)],
+            delta_timeframe_pair = delta_timeframe_pair_pseudos[ref_tf_pseudo]
+        )
+        last_orders[symbol] = datetime.now().strftime(standard_time_format)
     return 0
 
 def init_op_dict():
@@ -645,28 +589,31 @@ def treatment(x, pse, timeframe_pseudo):
     if datetime.now() - iteration_time > timedelta(minutes=delta_timeframe_pair_pseudos[timeframe_pseudo][2]):
         init_env(
             delta_timeframe_pair_pseudos[timeframe_pseudo][1],
-            operating_dicts[timeframe_pseudo]['candles'],
-            operating_dicts[timeframe_pseudo]['scores'],
-            operating_dicts[timeframe_pseudo]['base_sum_supports'],
-            operating_dicts[timeframe_pseudo]['base_sums']
+            operating_dicts[timeframe_pseudo]['candles'              ],
+            operating_dicts[timeframe_pseudo]['scores'               ],
+            operating_dicts[timeframe_pseudo]['base_sum_supports'    ],
+            operating_dicts[timeframe_pseudo]['base_sums'            ],
+            operating_dicts[timeframe_pseudo]['vol_base_sum_supports'],
+            operating_dicts[timeframe_pseudo]['vol_base_sums'        ]
         )
     ele = None
     if is_in_last_seconds_of_x_minutes(delta_timeframe_pair_pseudos[timeframe_pseudo][2]) or first == True:
         if x == next(iter(pse.items()))[0]:
-            print("================================================================")
+            print("============================================================================")
         if pse[x] not in operating_dicts[timeframe_pseudo]['preds']:
             operating_dicts[timeframe_pseudo]['preds'][pse[x]] = copy.deepcopy(initial_preds)
-        load_candle(pse[x], operating_dicts[timeframe_pseudo]['candles'], operating_dicts[timeframe_pseudo]['scores'], operating_dicts[timeframe_pseudo]['base_sum_supports'], operating_dicts[timeframe_pseudo]['base_sums'], timeframe=delta_timeframe_pair_pseudos[timeframe_pseudo][1])
+        load_candle(pse[x], operating_dicts[timeframe_pseudo]['candles'], operating_dicts[timeframe_pseudo]['scores'], operating_dicts[timeframe_pseudo]['base_sum_supports'], operating_dicts[timeframe_pseudo]['base_sums'], operating_dicts[timeframe_pseudo]['vol_base_sum_supports'], operating_dicts[timeframe_pseudo]['vol_base_sums'], timeframe=delta_timeframe_pair_pseudos[timeframe_pseudo][1])
         ele = load_element(pse[x], operating_dicts[timeframe_pseudo]['scores'])
         if pse[x] not in treatments_returns:
             treatments_returns[pse[x]] = {}
         if timeframe_pseudo not in treatments_returns[pse[x]]:
             treatments_returns[pse[x]][timeframe_pseudo] = {}
-        treatments_returns[pse[x]][timeframe_pseudo]['res'] = set_preds(pse[x], operating_dicts[timeframe_pseudo]['preds'], operating_dicts[timeframe_pseudo]['models'], ele, operating_dicts[timeframe_pseudo]['prob_limits'], operating_dicts[timeframe_pseudo]['scores'])    
-        #print(f"{treatments_returns[pse[x]][timeframe_pseudo]['res']}")
-    
+        treatments_returns[pse[x]][timeframe_pseudo]['res'] = set_preds(pse[x], operating_dicts[timeframe_pseudo]['preds'], operating_dicts[timeframe_pseudo]['models'], ele, operating_dicts[timeframe_pseudo]['prob_limits'], operating_dicts[timeframe_pseudo]['scores'])
     if ele:
-        treatments_returns[pse[x]][timeframe_pseudo]['r'] = execute_order(operating_dicts, pse[x], ele, timeframe_pseudo)
+        try:
+            treatments_returns[pse[x]][timeframe_pseudo]['r'] = execute_order(operating_dicts, pse[x], ele, timeframe_pseudo)
+        except Exception as e:
+            print(e.message)
 
 
 def loop():
@@ -701,7 +648,9 @@ def main():
             operating_dicts[timeframe_pseudo]['candles'],
             operating_dicts[timeframe_pseudo]['scores'],
             operating_dicts[timeframe_pseudo]['base_sum_supports'],
-            operating_dicts[timeframe_pseudo]['base_sums']
+            operating_dicts[timeframe_pseudo]['base_sums'],
+            operating_dicts[timeframe_pseudo]['vol_base_sum_supports'],
+            operating_dicts[timeframe_pseudo]['vol_base_sums']
         )
     while (True):
         loop()

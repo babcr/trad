@@ -13,9 +13,9 @@ def convert_to_boolean(value):
 def main(
         symbol     ,
         ordertype  ,
-        volume     ,
-        price      ,
-        delta_timeframe_pair
+        volume     = None,
+        price      = None,
+        delta_timeframe_pair = None
     ):
 
     try:
