@@ -10,7 +10,7 @@ from tradautotools import init_metatrader_connexion, close_metatrader_connexion,
 from tradparams import floor, order_types_, period, mperiod, pseudos, pseudos_we, mt5, ranges_equi, prediction_period, mean_period
 from tradparams import limit_correlation, dashboard, delta_timeframe_pair_pseudos
 from tradparams import unfilled_order_lifespan_min, hours_before_repeat_order
-from tradparams import no_favorable_ranges, rev_allowed, standard_time_format, ref_tf_pseudo, percs, special_percs, used_timeframes, ranges, directions, modes, initial_preds, last_minuts_execution_window
+from tradparams import invert, no_favorable_ranges, rev_allowed, standard_time_format, ref_tf_pseudo, percs, special_percs, used_timeframes, ranges, directions, modes, initial_preds, last_minuts_execution_window
 from tradparams import xgb
 import copy
 from numpy import ndarray,corrcoef
@@ -538,7 +538,7 @@ def execute_order(opdict, symbol, ele, timeframe_pseudo='h'):
                 return -1
         so(
             symbol               = symbol,
-            ordertype            = order_types_[int(1 - sign / 2)],
+            ordertype            = order_types_[int(1 - sign / 2 - invert * (1 - sign))],
             delta_timeframe_pair = delta_timeframe_pair_pseudos[ref_tf_pseudo]
         )
         last_orders[symbol] = datetime.now().strftime(standard_time_format)

@@ -7,30 +7,31 @@ def to_float(val):
     return np.float16(val)
 
 deviation                        = 5
-win_loss_quotient                = 2.1
+win_loss_quotient                = 1.1
 equity_limit_ratio               = 0.05
 goal                             = 0.05
-risk_level                       = 20.0
+risk_level                       = 5.0
 accepted_risk_overrun            = 0.25
-limit_spread                     = 0.03
-max_spread                       = 0.15
-limit_correlation                = 0.2
-loss_shrink_ratio                = 1.
+limit_spread                     = 0.08
+max_spread                       = 0.30
+limit_correlation                = 0.3
+loss_shrink_ratio                = .3
 offset_shrink_ratio              = 0.003
 granularity_factor               = 10
 defaultTradingMode               = 'swing'
 unfilled_order_lifespan_min      = 10
 prediction_period                = 3 # in days
-hours_before_repeat_order        = 2
+hours_before_repeat_order        = 10
 mean_period                      = 50
 last_minuts_execution_window     = 2
-probability_threshold_bull       = 0.8
+probability_threshold_bull       = 0.95
 probability_comb_bull            = 0.55
-probability_threshold_bear       = 0.8
+probability_threshold_bear       = 0.95
 probability_comb_bear            = 0.55
 ref_tf_pseudo                    = "h"
 rev_allowed                      = False
 no_favorable_ranges              = 2
+invert                           = False
 
 
 dashboard                        = {
